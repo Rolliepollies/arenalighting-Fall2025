@@ -199,7 +199,7 @@ public class ColorController : MonoBehaviour
     public void OnSetBlue1()
     {
         // string htmlValue = "#03244d";
-        Color newColor = new Color(0.012f, 0.141f, 0.302f, .500f);
+        Color newColor = new Color(0.047f, 0.137f, 0.251f, 1f);
 
         // All or current section only
         if (sectionToggle)
@@ -223,7 +223,7 @@ public class ColorController : MonoBehaviour
     public void OnSetOrange1()
     {
         // string htmlValue = "#03244d";
-        Color newColor = new Color(0.8666667f, 0.3333333f, 0.04705882f, .5f);
+        Color newColor = new Color(0.910f, 0.467f, 0.133f, 1f);
         GameObject[] allLEDs = GetAllLEDs();
         UpdateLEDColors(allLEDs, newColor);
     }
@@ -232,6 +232,78 @@ public class ColorController : MonoBehaviour
     {
         // string htmlValue = "#03244d";
         Color newColor = new Color(0.9647059f, 0.5019608f, 0.1490196f, .5f);
+        GameObject[] allLEDs = GetAllLEDs();
+        UpdateLEDColors(allLEDs, newColor);
+    }
+
+    public void OnSetPurple1()
+    {
+        Color newColor = new Color(0.271f, 0.114f, 0.486f, 1f); // Normalized color for #461D7C
+
+        // All or current section only
+        if (sectionToggle)
+        {
+            UpdateLEDColors(sectionLEDs, newColor);
+        } else
+        {
+            GameObject[] allLEDs = GetAllLEDs();
+            UpdateLEDColors(allLEDs, newColor);
+        }
+    }
+
+    public void OnSetPurple2()
+    {
+        Color newColor = new Color(0.749f, 0.251f, 0.749f, 1f); // Normalized color for #BF40BF
+        GameObject[] allLEDs = GetAllLEDs();
+        UpdateLEDColors(allLEDs, newColor);
+    }
+
+    public void OnSetGold1()
+    {
+        Color newColor = new Color(0.992f, 0.816f, 0.137f, 1f); // Normalized color for #FDD023
+        GameObject[] allLEDs = GetAllLEDs();
+        UpdateLEDColors(allLEDs, newColor);
+    }
+
+    public void OnSetGold2()
+    {
+        Color newColor = new Color(0.710f, 0.580f, 0.063f, 1f); // Normalized color for #B59410
+        GameObject[] allLEDs = GetAllLEDs();
+        UpdateLEDColors(allLEDs, newColor);
+    }
+
+    public void OnSetCrimson1()
+    {
+        Color newColor = new Color(0.620f, 0.106f, 0.196f, 1f); // Normalized color for #9E1B32
+
+        // All or current section only
+        if (sectionToggle)
+        {
+            UpdateLEDColors(sectionLEDs, newColor);
+        } else
+        {
+            GameObject[] allLEDs = GetAllLEDs();
+            UpdateLEDColors(allLEDs, newColor);
+        }
+    }
+
+    public void OnSetCrimson2()
+    {
+        Color newColor = new Color(0.545f, 0f, 0f, 1f); // Normalized color for #8B0000
+        GameObject[] allLEDs = GetAllLEDs();
+        UpdateLEDColors(allLEDs, newColor);
+    }
+
+    public void OnSetWhite1()
+    {
+        Color newColor = new Color(1f, 1f, 1f, 1f); // Normalized color for #FFFFFF
+        GameObject[] allLEDs = GetAllLEDs();
+        UpdateLEDColors(allLEDs, newColor);
+    }
+
+    public void OnSetWhite2()
+    {
+        Color newColor = new Color(0.878f, 0.875f, 0.867f, 1f); // Normalized color for #E0DFDD
         GameObject[] allLEDs = GetAllLEDs();
         UpdateLEDColors(allLEDs, newColor);
     }
