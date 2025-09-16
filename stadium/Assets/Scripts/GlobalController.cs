@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using static System.Array;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -39,7 +40,9 @@ public class GlobalController : MonoBehaviour
 
     // Keeps track of the LEDs and groups
     private int selectedGroup;
-    GameObject[] allLEDs;
+    GameObject[] allLEDs; // Stores all of the LED GameObjects
+    int[] sectionIndex; // Stores the starting index of each section in allLEDs array
+    int[][] rowIndex; // Stores the starting index of each row in each section in allLEDs array
     Dictionary<int, LEDGroupData> groupData = new Dictionary<int, LEDGroupData>();
 
     // Used to identify which LED is which when saving/loading light shows
@@ -90,40 +93,38 @@ public class GlobalController : MonoBehaviour
     {
         timeOffset = 0f;
 
-        // Initialize our groups and connect them to the relevant buttons
-        groupData = new Dictionary<int, LEDGroupData>()
-        {
-            { 1, new LEDGroupData(1) },
-            { 2, new LEDGroupData(2) },
-            { 3, new LEDGroupData(3) },
-            { 4, new LEDGroupData(4) },
-            { 5, new LEDGroupData(5) },
-            { 6, new LEDGroupData(6) },
-            { 7, new LEDGroupData(7) },
-            { 8, new LEDGroupData(8) },
-            { 9, new LEDGroupData(9) }
-        };
-        group1.onClick.AddListener(() => { selectedGroup = 1; UpdateUI(); });
-        group2.onClick.AddListener(() => { selectedGroup = 2; UpdateUI(); });
-        group3.onClick.AddListener(() => { selectedGroup = 3; UpdateUI(); });
-        group4.onClick.AddListener(() => { selectedGroup = 4; UpdateUI(); });
-        group5.onClick.AddListener(() => { selectedGroup = 5; UpdateUI(); });
-        group6.onClick.AddListener(() => { selectedGroup = 6; UpdateUI(); });
-        group7.onClick.AddListener(() => { selectedGroup = 7; UpdateUI(); });
-        group8.onClick.AddListener(() => { selectedGroup = 8; UpdateUI(); });
-        group9.onClick.AddListener(() => { selectedGroup = 9; UpdateUI(); });
+        // // Initialize our groups and connect them to the relevant buttons
+        // groupData = new Dictionary<int, LEDGroupData>()
+        // {
+        //     { 1, new LEDGroupData(1) },
+        //     { 2, new LEDGroupData(2) },
+        //     { 3, new LEDGroupData(3) },
+        //     { 4, new LEDGroupData(4) },
+        //     { 5, new LEDGroupData(5) },
+        //     { 6, new LEDGroupData(6) },
+        //     { 7, new LEDGroupData(7) },
+        //     { 8, new LEDGroupData(8) },
+        //     { 9, new LEDGroupData(9) }
+        // };
+        // group1.onClick.AddListener(() => { selectedGroup = 1; UpdateUI(); });
+        // group2.onClick.AddListener(() => { selectedGroup = 2; UpdateUI(); });
+        // group3.onClick.AddListener(() => { selectedGroup = 3; UpdateUI(); });
+        // group4.onClick.AddListener(() => { selectedGroup = 4; UpdateUI(); });
+        // group5.onClick.AddListener(() => { selectedGroup = 5; UpdateUI(); });
+        // group6.onClick.AddListener(() => { selectedGroup = 6; UpdateUI(); });
+        // group7.onClick.AddListener(() => { selectedGroup = 7; UpdateUI(); });
+        // group8.onClick.AddListener(() => { selectedGroup = 8; UpdateUI(); });
+        // group9.onClick.AddListener(() => { selectedGroup = 9; UpdateUI(); });
 
-        // Handle the pulse / static / twinkle buttons
-        isPulseActiveCheckbox.onValueChanged.AddListener(OnPulseToggleChanged);
-        isStaticActiveCheckbox.onValueChanged.AddListener(OnStaticToggleChanged);
-        isTwinkleActiveCheckbox.onValueChanged.AddListener(OnTwinkleToggleChanged);
+        // // Handle the pulse / static / twinkle buttons
+        // isPulseActiveCheckbox.onValueChanged.AddListener(OnPulseToggleChanged);
+        // isStaticActiveCheckbox.onValueChanged.AddListener(OnStaticToggleChanged);
+        // isTwinkleActiveCheckbox.onValueChanged.AddListener(OnTwinkleToggleChanged);
 
-        // Start with group 1 selected
-        selectedGroup = 1;
-        UpdateUI();
+        // // Start with group 1 selected
+        // selectedGroup = 1;
+        // UpdateUI();
 
-        allLEDs = GameObject.FindGameObjectsWithTag("LED");
-        Debug.Log($"{allLEDs.Length} LEDs found in scene.");
         // Activate all of the LED sphere colliders
         // Ideally we would do this once manually in the Unity editor, rather than dynamically through code every time we start the scene
         SphereCollider[] sphereColliders = FindObjectsOfType<SphereCollider>(true);
@@ -133,24 +134,50 @@ public class GlobalController : MonoBehaviour
         }
         Debug.Log($"Activated {sphereColliders.Length} LED sphere colliders.");
 
-        // Initializes all LED colors as well as the location-to-gameobject lookup table that is used for saving/loading
-        foreach (GameObject LED in allLEDs)
+        // Find all sections and sort them by section number
+        GameObject[] sectionList = GameObject.FindGameObjectsWithTag("Section");
+        SortSectionList(sectionList);
+
+        // Store each LED in an array for easy access later
+        // TODO: build way to access specific LED based on section, row, and column
+        List<GameObject> tempLEDList = new List<GameObject>();
+        sectionIndex = new int[sectionList.Length];
+        rowIndex = new int[sectionList.Length][];
+        int ledIndex = 0;
+
+        for (int i = 0; i < sectionList.Length; i++)
         {
-            SetColor(LED, Color.black);
+            GameObject section = sectionList[i];
+            sectionIndex[i] = ledIndex;
+            rowIndex[i] = new int[section.transform.childCount];
 
-            Vector3 pos = new Vector3(
-                Mathf.Round(LED.transform.position.x * 1000f) / 1000f,
-                Mathf.Round(LED.transform.position.y * 1000f) / 1000f,
-                Mathf.Round(LED.transform.position.z * 1000f) / 1000f
-            );
-
-            if (!LEDLookupByPosition.ContainsKey(pos))
+            for (int j = 0; j < section.transform.childCount; j++)
             {
-                LEDLookupByPosition.Add(pos, LED);
+                GameObject row = section.transform.GetChild(j).gameObject;
+                rowIndex[i][j] = ledIndex;
+
+                foreach (Transform LED in row.transform)
+                {
+                    if (LED.gameObject.CompareTag("LED"))
+                    {
+                        // Set the LED to a random color for visibility
+                        SetColor(LED.gameObject, Color.black);
+
+                        tempLEDList.Add(LED.gameObject);
+                        ledIndex++;
+                    }
+                }
             }
-            else
+        }
+
+        allLEDs = tempLEDList.ToArray();
+        Debug.Log($"number of LEDs: {allLEDs.Length}");
+        for (int i = 0; i < sectionList.Length; i++)
+        {
+            Debug.Log($"section {i} name: {sectionList[i].name}, starting index: {sectionIndex[i]}");
+            for (int j = 0; j < rowIndex[i].Length; j++)
             {
-                Debug.LogWarning($"Duplicate position detected for LED at {pos}");
+                Debug.Log($"  row {j} starting index: {rowIndex[i][j]}");
             }
         }
     }
@@ -271,13 +298,32 @@ public class GlobalController : MonoBehaviour
         lastLoadedStep = -1;
         Debug.Log("Performance begun");
     }
+
     public void EndLightshow()
     {
         isLightShowPlaying = false;
     }
 
+    // Sorts the sections by section number, assuming the section names are in the format "Section X" where X is the section number
+    private void SortSectionList(GameObject[] sectionList)
+    {
+        Sort(sectionList, (a, b) => {
+            string[] aParts = a.name.Split(' ');
+            string[] bParts = b.name.Split(' ');
 
-    
+            // If names are the same length, compare the section numbers
+            if (aParts.Length == bParts.Length)
+            {
+                return int.Parse(aParts[1]).CompareTo(int.Parse(bParts[1]));
+            }
+            // If names are different lengths, the longer name should come first
+            else
+            {
+                return -1 * a.name.Length.CompareTo(b.name.Length);
+            }
+        });
+    }
+
     // Adds an array of LED objects to the currently active group
     public void AddToGroup(GameObject[] LEDsToGroup)
     {
