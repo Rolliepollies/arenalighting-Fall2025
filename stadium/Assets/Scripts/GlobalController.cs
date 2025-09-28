@@ -324,6 +324,36 @@ public class GlobalController : MonoBehaviour
         });
     }
 
+    // returns the LED GameObject at the given section and LED number
+    public GameObject GetLED(int sectionNum, int LEDNum)
+    {
+        if (sectionNum < 0 || sectionNum >= sectionIndex.Length)
+        {
+            throw new System.IndexOutOfRangeException($"Section number {sectionNum} is out of range.");
+        }
+        if (LEDNum < 0 || sectionIndex[sectionNum] + LEDNum >= allLEDs.Length)
+        {
+            throw new System.IndexOutOfRangeException($"LED number {LEDNum} is out of range for section {sectionNum}.");
+        }
+
+        return allLEDs[sectionIndex[sectionNum] + LEDNum];
+    }
+
+    // returns an array of LED GameObjects from startLEDNum to endLEDNum (inclusive) in the given section
+    public GameObject[] GetLED(int sectionNum, int LEDNum, int length)
+    {
+        if (sectionNum < 0 || sectionNum >= sectionIndex.Length)
+        {
+            throw new System.IndexOutOfRangeException($"Section number {sectionNum} is out of range.");
+        }
+        if (LEDNum < 0 || length <= 0 || sectionIndex[sectionNum] + LEDNum + length > allLEDs.Length)
+        {
+            throw new System.IndexOutOfRangeException($"LED range {LEDNum} to {LEDNum + length - 1} is invalid for section {sectionNum}.");
+        }
+
+        return allLEDs[(sectionIndex[sectionNum] + LEDNum) .. (sectionIndex[sectionNum] + LEDNum + length)];
+    }
+
     // Adds an array of LED objects to the currently active group
     public void AddToGroup(GameObject[] LEDsToGroup)
     {
