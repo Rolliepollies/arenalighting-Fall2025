@@ -61,10 +61,12 @@ public class GlobalController : MonoBehaviour
         public bool isStaticActive = false;
         public bool isTwinkleActive = false;
         public Color color;
-        public List<Vector3> LEDPositions = new List<Vector3>();
+        // public List<Vector3> LEDPositions = new List<Vector3>();
+        public List<int> LEDIndices = new List<int>();
 
         // Constructors
-        public LEDGroupData(int inputID) {
+        public LEDGroupData(int inputID)
+        {
             id = inputID;
             color = new Color(Random.value, Random.value, Random.value);
         }
@@ -75,7 +77,7 @@ public class GlobalController : MonoBehaviour
             isStaticActive = other.isStaticActive;
             isTwinkleActive = other.isTwinkleActive;
             color = other.color;
-            LEDPositions = new List<Vector3>(other.LEDPositions);
+            LEDIndices = new List<int>(other.LEDIndices);
         }
     }
     [System.Serializable]
@@ -171,15 +173,27 @@ public class GlobalController : MonoBehaviour
         }
 
         allLEDs = tempLEDList.ToArray();
-        Debug.Log($"number of LEDs: {allLEDs.Length}");
-        for (int i = 0; i < sectionList.Length; i++)
+
+        foreach (GameObject led in allLEDs)
         {
-            Debug.Log($"section {i} name: {sectionList[i].name}, starting index: {sectionIndex[i]}");
-            for (int j = 0; j < rowIndex[i].Length; j++)
+            Vector3 pos = new Vector3(
+                Mathf.Round(led.transform.position.x * 1000f) / 1000f,
+                Mathf.Round(led.transform.position.y * 1000f) / 1000f,
+                Mathf.Round(led.transform.position.z * 1000f) / 1000f
+            );
+
+            if (!LEDLookupByPosition.ContainsKey(pos))
             {
-                Debug.Log($"  row {j} starting index: {rowIndex[i][j]}");
+                LEDLookupByPosition.Add(pos, led);
+            }
+            else
+            {
+                Debug.LogWarning($"Duplicate LED position found at {pos}. This may cause issues with saving/loading.");
             }
         }
+
+        ConvertXYZtoIndex();
+
     }
 
 
@@ -242,17 +256,18 @@ public class GlobalController : MonoBehaviour
             {
                 float scaledTime = currentTime * pulseSpeed;
                 Color lerpedColor = Color.Lerp(data.color * 0.8f, data.color * 1.2f, BrightnessCurve.Evaluate(scaledTime)); // Pulses the color based on the brightness curve as a function of time
-                foreach (Vector3 position in data.LEDPositions)
+
+                foreach (int index in data.LEDIndices)
                 {
-                    GameObject LED = LEDLookupByPosition[position];
+                    GameObject LED = allLEDs[index];
                     SetColor(LED, lerpedColor);
                 }
             }
             if (data.isStaticActive && currentTime >= nextStepTime)
             {
-                foreach (Vector3 position in data.LEDPositions)
+                foreach (int index in data.LEDIndices)
                 {
-                    GameObject LED = LEDLookupByPosition[position];
+                    GameObject LED = allLEDs[index];
                     SetColor(LED, new Color(Random.value, Random.value, Random.value));
                 }
             }
@@ -351,7 +366,14 @@ public class GlobalController : MonoBehaviour
             throw new System.IndexOutOfRangeException($"LED range {LEDNum} to {LEDNum + length - 1} is invalid for section {sectionNum}.");
         }
 
-        return allLEDs[(sectionIndex[sectionNum] + LEDNum) .. (sectionIndex[sectionNum] + LEDNum + length)];
+        int start = sectionIndex[sectionNum] + LEDNum;
+        int end = start + length;
+        GameObject[] result = new GameObject[length];
+        for (int i = 0; i < length; i++)
+        {
+            result[i] = allLEDs[start + i];
+        }
+        return result;
     }
 
     // Adds an array of LED objects to the currently active group
@@ -359,21 +381,15 @@ public class GlobalController : MonoBehaviour
     {
         foreach (GameObject LED in LEDsToGroup)
         {
-            Vector3 pos = new Vector3(
-                Mathf.Round(LED.transform.position.x * 1000f) / 1000f,
-                Mathf.Round(LED.transform.position.y * 1000f) / 1000f,
-                Mathf.Round(LED.transform.position.z * 1000f) / 1000f
-            );
+            int index = System.Array.IndexOf(allLEDs, LED);
 
             // Remove the LED's position from any group it might be in.
-            foreach (var kvp in groupData)
+            foreach (var group in groupData.Values)
             {
-                kvp.Value.LEDPositions.Remove(pos);
+                group.LEDIndices.Remove(index);
             }
-            // Add the LED's position to the selected group's LEDPositions list.
-            groupData[selectedGroup].LEDPositions.Add(pos);
 
-            // Set the LED's color to match the group's color.
+            groupData[selectedGroup].LEDIndices.Add(index);
             SetColor(LED, groupData[selectedGroup].color);
         }
     }
@@ -381,6 +397,42 @@ public class GlobalController : MonoBehaviour
     public void AddToGroup(GameObject LED)
     {
         AddToGroup(new GameObject[] { LED });
+    }
+
+    public void ConvertXYZtoIndex()
+    {
+        // using JsonUtility, convert the LEDPositions in each group from XYZ coordinates to LED index
+        string pathPrefix = "Assets/Resources/";
+        string pathSuffix = ".json";
+        string loadFolder = "first_demo/";
+        string saveFolder = "first_demo_refactor/";
+
+
+        for (int i = 0; i < 1; i++)
+        {
+            LEDSaveData saveData = JsonUtility.FromJson<LEDSaveData>(File.ReadAllText(pathPrefix + saveFolder + "alt" + pathSuffix));
+
+            //     foreach (Vector3 pos in group.LEDPositions)
+            //     {
+            //         GameObject led = FindLEDByPosition(pos);
+            //         if (led)
+            //         {
+            //             int index = System.Array.IndexOf(allLEDs, led);
+            //             group.LEDIndices.Add(index);
+            //             Debug.Log($"LED at position {pos} has index {index}.");
+            //         }
+            //         else
+            //         {
+            //             Debug.LogWarning($"LED at position {pos} not found.");
+            //         }
+            //     }
+
+            //     group.LEDPositions.Clear();
+
+            string jsonData = JsonUtility.ToJson(saveData, true);
+            File.WriteAllText(pathPrefix + saveFolder + "alt" + pathSuffix, jsonData);
+        }
+
     }
 
 
@@ -412,16 +464,16 @@ public class GlobalController : MonoBehaviour
             if (groupData.ContainsKey(groupSave.id))
             {
                 LEDGroupData currentGroup = groupData[groupSave.id];
-                currentGroup.LEDPositions.Clear();
-                currentGroup.LEDPositions.AddRange(groupSave.LEDPositions);
+                currentGroup.LEDIndices.Clear();
+                currentGroup.LEDIndices.AddRange(groupSave.LEDIndices);
                 currentGroup.color = groupSave.color;
                 currentGroup.isPulseActive = groupSave.isPulseActive;
                 currentGroup.isStaticActive = groupSave.isStaticActive;
                 currentGroup.isTwinkleActive = groupSave.isTwinkleActive;
 
-                foreach (Vector3 pos in groupSave.LEDPositions)
+                foreach (int index in groupSave.LEDIndices)
                 {
-                    GameObject led = FindLEDByPosition(pos);
+                    GameObject led = allLEDs[index];
                     if (led != null)
                     {
                         if (currentGroup.isTwinkleActive)
@@ -460,11 +512,7 @@ public class GlobalController : MonoBehaviour
             Mathf.Round(pos.y * 1000f) / 1000f,
             Mathf.Round(pos.z * 1000f) / 1000f);
 
-        if (LEDLookupByPosition.TryGetValue(key, out GameObject LED))
-        {
-            return LED;
-        }
-        return null;
+        return LEDLookupByPosition.ContainsKey(key) ? LEDLookupByPosition[key] : null;
     }
 
 
@@ -490,9 +538,9 @@ public class GlobalController : MonoBehaviour
         if (ColorUtility.TryParseHtmlString(htmlValue, out newColor))
         {
             groupData[selectedGroup].color = newColor;
-            foreach (Vector3 pos in groupData[selectedGroup].LEDPositions)
+            foreach (int index in groupData[selectedGroup].LEDIndices)
             {
-                GameObject led = FindLEDByPosition(pos);
+                GameObject led = allLEDs[index];
                 if (led != null)
                 {
                     SetColor(led, groupData[selectedGroup].color);
