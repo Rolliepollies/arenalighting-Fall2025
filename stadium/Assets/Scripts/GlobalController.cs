@@ -43,7 +43,7 @@ public class GlobalController : MonoBehaviour
     GameObject[] allLEDs; // Stores all of the LED GameObjects
     int[] sectionIndex; // Stores the starting index of each section in allLEDs array
     int[][] rowIndex; // Stores the starting index of each row in each section in allLEDs array
-    Dictionary<int, LEDGroupData> groupData = new Dictionary<int, LEDGroupData>();
+    List<LEDGroupData> groupList = new List<LEDGroupData>();
 
     // Used to identify which LED is which when saving/loading light shows
     private Dictionary<Vector3, GameObject> LEDLookupByPosition = new Dictionary<Vector3, GameObject>();
@@ -96,52 +96,51 @@ public class GlobalController : MonoBehaviour
         timeOffset = 0f;
 
         // // Initialize our groups and connect them to the relevant buttons
-        // groupData = new Dictionary<int, LEDGroupData>()
-        // {
-        //     { 1, new LEDGroupData(1) },
-        //     { 2, new LEDGroupData(2) },
-        //     { 3, new LEDGroupData(3) },
-        //     { 4, new LEDGroupData(4) },
-        //     { 5, new LEDGroupData(5) },
-        //     { 6, new LEDGroupData(6) },
-        //     { 7, new LEDGroupData(7) },
-        //     { 8, new LEDGroupData(8) },
-        //     { 9, new LEDGroupData(9) }
-        // };
-        // group1.onClick.AddListener(() => { selectedGroup = 1; UpdateUI(); });
-        // group2.onClick.AddListener(() => { selectedGroup = 2; UpdateUI(); });
-        // group3.onClick.AddListener(() => { selectedGroup = 3; UpdateUI(); });
-        // group4.onClick.AddListener(() => { selectedGroup = 4; UpdateUI(); });
-        // group5.onClick.AddListener(() => { selectedGroup = 5; UpdateUI(); });
-        // group6.onClick.AddListener(() => { selectedGroup = 6; UpdateUI(); });
-        // group7.onClick.AddListener(() => { selectedGroup = 7; UpdateUI(); });
-        // group8.onClick.AddListener(() => { selectedGroup = 8; UpdateUI(); });
-        // group9.onClick.AddListener(() => { selectedGroup = 9; UpdateUI(); });
+        groupList = new List<LEDGroupData>()
+        {
+            new LEDGroupData(1),
+            new LEDGroupData(2),
+            new LEDGroupData(3),
+            new LEDGroupData(4),
+            new LEDGroupData(5),
+            new LEDGroupData(6),
+            new LEDGroupData(7),
+            new LEDGroupData(8),
+            new LEDGroupData(9)
+        };
+        group1.onClick.AddListener(() => { selectedGroup = 1; UpdateUI(); });
+        group2.onClick.AddListener(() => { selectedGroup = 2; UpdateUI(); });
+        group3.onClick.AddListener(() => { selectedGroup = 3; UpdateUI(); });
+        group4.onClick.AddListener(() => { selectedGroup = 4; UpdateUI(); });
+        group5.onClick.AddListener(() => { selectedGroup = 5; UpdateUI(); });
+        group6.onClick.AddListener(() => { selectedGroup = 6; UpdateUI(); });
+        group7.onClick.AddListener(() => { selectedGroup = 7; UpdateUI(); });
+        group8.onClick.AddListener(() => { selectedGroup = 8; UpdateUI(); });
+        group9.onClick.AddListener(() => { selectedGroup = 9; UpdateUI(); });
 
-        // // Handle the pulse / static / twinkle buttons
-        // isPulseActiveCheckbox.onValueChanged.AddListener(OnPulseToggleChanged);
-        // isStaticActiveCheckbox.onValueChanged.AddListener(OnStaticToggleChanged);
-        // isTwinkleActiveCheckbox.onValueChanged.AddListener(OnTwinkleToggleChanged);
+        // Handle the pulse / static / twinkle buttons
+        isPulseActiveCheckbox.onValueChanged.AddListener(OnPulseToggleChanged);
+        isStaticActiveCheckbox.onValueChanged.AddListener(OnStaticToggleChanged);
+        isTwinkleActiveCheckbox.onValueChanged.AddListener(OnTwinkleToggleChanged);
 
-        // // Start with group 1 selected
-        // selectedGroup = 1;
-        // UpdateUI();
+        // Start with group 1 selected
+        selectedGroup = 1;
+        UpdateUI();
 
         // Activate all of the LED sphere colliders
         // Ideally we would do this once manually in the Unity editor, rather than dynamically through code every time we start the scene
-        SphereCollider[] sphereColliders = FindObjectsOfType<SphereCollider>(true);
-        foreach (SphereCollider col in sphereColliders)
-        {
-            col.enabled = true;
-        }
-        Debug.Log($"Activated {sphereColliders.Length} LED sphere colliders.");
+        // SphereCollider[] sphereColliders = FindObjectsOfType<SphereCollider>(true);
+        // foreach (SphereCollider col in sphereColliders)
+        // {
+        //     col.enabled = true;
+        // }
+        // Debug.Log($"Activated {sphereColliders.Length} LED sphere colliders.");
 
         // Find all sections and sort them by section number
         GameObject[] sectionList = GameObject.FindGameObjectsWithTag("Section");
         SortSectionList(sectionList);
 
         // Store each LED in an array for easy access later
-        // TODO: build way to access specific LED based on section, row, and column
         List<GameObject> tempLEDList = new List<GameObject>();
         sectionIndex = new int[sectionList.Length];
         rowIndex = new int[sectionList.Length][];
@@ -234,7 +233,7 @@ public class GlobalController : MonoBehaviour
         if (isLightShowPlaying && Mathf.FloorToInt(currentTime) > lastLoadedStep)
         {
             lastLoadedStep = Mathf.FloorToInt(currentTime);
-            string resourcePath = $"first_demo/{lastLoadedStep}";
+            string resourcePath = $"first_demo_refactor/{lastLoadedStep}";
             TextAsset jsonAsset = Resources.Load<TextAsset>(resourcePath);
             if (jsonAsset != null)
             {
@@ -248,24 +247,22 @@ public class GlobalController : MonoBehaviour
         }
 
         // Handles the pulse and static effects
-        foreach (var kvp in groupData)
+        foreach (LEDGroupData group in groupList)
         {
-            int groupNum = kvp.Key;
-            LEDGroupData data = kvp.Value;
-            if (data.isPulseActive)
+            if (group.isPulseActive)
             {
                 float scaledTime = currentTime * pulseSpeed;
-                Color lerpedColor = Color.Lerp(data.color * 0.8f, data.color * 1.2f, BrightnessCurve.Evaluate(scaledTime)); // Pulses the color based on the brightness curve as a function of time
+                Color lerpedColor = Color.Lerp(group.color * 0.8f, group.color * 1.2f, BrightnessCurve.Evaluate(scaledTime)); // Pulses the color based on the brightness curve as a function of time
 
-                foreach (int index in data.LEDIndices)
+                foreach (int index in group.LEDIndices)
                 {
                     GameObject LED = allLEDs[index];
                     SetColor(LED, lerpedColor);
                 }
             }
-            if (data.isStaticActive && currentTime >= nextStepTime)
+            if (group.isStaticActive && currentTime >= nextStepTime)
             {
-                foreach (int index in data.LEDIndices)
+                foreach (int index in group.LEDIndices)
                 {
                     GameObject LED = allLEDs[index];
                     SetColor(LED, new Color(Random.value, Random.value, Random.value));
@@ -384,13 +381,13 @@ public class GlobalController : MonoBehaviour
             int index = System.Array.IndexOf(allLEDs, LED);
 
             // Remove the LED's position from any group it might be in.
-            foreach (var group in groupData.Values)
+            foreach (LEDGroupData group in groupList)
             {
                 group.LEDIndices.Remove(index);
             }
 
-            groupData[selectedGroup].LEDIndices.Add(index);
-            SetColor(LED, groupData[selectedGroup].color);
+            groupList[selectedGroup].LEDIndices.Add(index);
+            SetColor(LED, groupList[selectedGroup].color);
         }
     }
     // When given a single LED, turns it into an array and sends it to the function above
@@ -444,11 +441,9 @@ public class GlobalController : MonoBehaviour
     {
         LEDSaveData saveData = new LEDSaveData();
 
-        foreach (var kvp in groupData)
+        foreach (LEDGroupData group in groupList)
         {
-            LEDGroupData groupDataValue = kvp.Value;
-            LEDGroupData groupCopy = new LEDGroupData(groupDataValue);
-            saveData.groups.Add(groupCopy);
+            saveData.groups.Add(group);
         }
 
         string jsonData = JsonUtility.ToJson(saveData, true);
@@ -459,30 +454,25 @@ public class GlobalController : MonoBehaviour
     {
         LEDSaveData saveData = JsonUtility.FromJson<LEDSaveData>(jsonData);
 
-        foreach (LEDGroupData groupSave in saveData.groups)
+        foreach (LEDGroupData savedGroup in saveData.groups)
         {
-            if (groupData.ContainsKey(groupSave.id))
-            {
-                LEDGroupData currentGroup = groupData[groupSave.id];
-                currentGroup.LEDIndices.Clear();
-                currentGroup.LEDIndices.AddRange(groupSave.LEDIndices);
-                currentGroup.color = groupSave.color;
-                currentGroup.isPulseActive = groupSave.isPulseActive;
-                currentGroup.isStaticActive = groupSave.isStaticActive;
-                currentGroup.isTwinkleActive = groupSave.isTwinkleActive;
+            groupList.Clear();
+            groupList.Add(savedGroup);
 
-                foreach (int index in groupSave.LEDIndices)
+            // This should not be here
+            // need to move to the update function
+            foreach (int index in savedGroup.LEDIndices)
+            {
+                GameObject led = (index >= 0 && index < allLEDs.Length) ? allLEDs[index] : null;
+                if (led != null)
                 {
-                    GameObject led = allLEDs[index];
-                    if (led != null)
+                    if (savedGroup.isTwinkleActive)
                     {
-                        if (currentGroup.isTwinkleActive)
-                        {
-                            TwinkleEffect(led);
-                        } else
-                        {
-                            SetColor(led, currentGroup.color);
-                        }
+                        TwinkleEffect(led);
+                    }
+                    else
+                    {
+                        SetColor(led, savedGroup.color);
                     }
                 }
             }
@@ -537,13 +527,13 @@ public class GlobalController : MonoBehaviour
 
         if (ColorUtility.TryParseHtmlString(htmlValue, out newColor))
         {
-            groupData[selectedGroup].color = newColor;
-            foreach (int index in groupData[selectedGroup].LEDIndices)
+            groupList[selectedGroup].color = newColor;
+            foreach (int index in groupList[selectedGroup].LEDIndices)
             {
                 GameObject led = allLEDs[index];
                 if (led != null)
                 {
-                    SetColor(led, groupData[selectedGroup].color);
+                    SetColor(led, groupList[selectedGroup].color);
                 }
             }
         }
@@ -556,10 +546,10 @@ public class GlobalController : MonoBehaviour
     // When switching groups, we need to update the UI to match the correct settings of the group (i.e. if group is set to pulse, then pulse checkbox should be checked)
     private void UpdateUI()
     {
-        hexCodeInput.text = "#" + ColorUtility.ToHtmlStringRGB(groupData[selectedGroup].color);
-        isPulseActiveCheckbox.isOn = groupData[selectedGroup].isPulseActive;
-        isStaticActiveCheckbox.isOn = groupData[selectedGroup].isStaticActive;
-        isTwinkleActiveCheckbox.isOn = groupData[selectedGroup].isTwinkleActive;
+        hexCodeInput.text = "#" + ColorUtility.ToHtmlStringRGB(groupList[selectedGroup].color);
+        isPulseActiveCheckbox.isOn = groupList[selectedGroup].isPulseActive;
+        isStaticActiveCheckbox.isOn = groupList[selectedGroup].isStaticActive;
+        isTwinkleActiveCheckbox.isOn = groupList[selectedGroup].isTwinkleActive;
     }
 
 
@@ -567,17 +557,17 @@ public class GlobalController : MonoBehaviour
     // Updates the values when the toggle buttons are clicked
     public void OnPulseToggleChanged(bool isOn)
     {
-        groupData[selectedGroup].isPulseActive = isOn;
+        groupList[selectedGroup].isPulseActive = isOn;
         Debug.Log("Pulse effect " + (isOn ? "enabled" : "disabled") + " for group " + selectedGroup);
     }
     public void OnStaticToggleChanged(bool isOn)
     {
-        groupData[selectedGroup].isStaticActive = isOn;
+        groupList[selectedGroup].isStaticActive = isOn;
         Debug.Log("Static effect " + (isOn ? "enabled" : "disabled") + " for group " + selectedGroup);
     }
     public void OnTwinkleToggleChanged(bool isOn)
     {
-        groupData[selectedGroup].isTwinkleActive = isOn;
+        groupList[selectedGroup].isTwinkleActive = isOn;
         Debug.Log("Twinkle effect " + (isOn ? "enabled" : "disabled") + " for group " + selectedGroup);
     }
 
