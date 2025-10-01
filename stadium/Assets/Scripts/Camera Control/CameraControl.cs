@@ -11,7 +11,7 @@ public class CameraControl : MonoBehaviour
     public GameObject fixedCameraPositionPanel;
     public GameObject dynamicCameraControlPanel;
 
-    public GlobalController globalController;
+    public ShowViewer showViewer;
 
     [SerializeField]
     FreeCameraControl freeCameraControl;
@@ -20,7 +20,7 @@ public class CameraControl : MonoBehaviour
 
     void Update()
     {
-        if (globalController && (Input.GetMouseButton(0) || Input.GetMouseButton(1) || Input.GetMouseButton(2)))
+        if (showViewer && (Input.GetMouseButton(0) || Input.GetMouseButton(1) || Input.GetMouseButton(2)))
         {
             Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
             RaycastHit[] hits = Physics.RaycastAll(ray);
@@ -29,7 +29,7 @@ public class CameraControl : MonoBehaviour
             {
                 if (Input.GetMouseButton(0) && hit.collider.CompareTag("LED"))
                 {
-                    globalController.AddToGroup(hit.collider.gameObject);
+                    showViewer.AddToGroup(hit.collider.gameObject);
 
                     break;
                 }
@@ -46,7 +46,7 @@ public class CameraControl : MonoBehaviour
                             }
                             foreach (Transform child in sibling) // For each LED in this section
                             {
-                                globalController.AddToGroup(child.gameObject);
+                                showViewer.AddToGroup(child.gameObject);
                             }
                         }
                         break;
@@ -59,7 +59,7 @@ public class CameraControl : MonoBehaviour
                     {
                         foreach (Transform sibling in parent)
                         {
-                            globalController.AddToGroup(sibling.gameObject);
+                            showViewer.AddToGroup(sibling.gameObject);
                         }
                         break;
                     }

@@ -26,7 +26,7 @@ public enum MusicSynchronizerMode
 
 public class MusicSynchronizer : MonoBehaviour
 {
-    public GlobalController globalController;
+    public ShowViewer showViewer;
     public AudioPeer audioPeer;
 
     public float minScale = 0.25f;
@@ -126,7 +126,7 @@ public class MusicSynchronizer : MonoBehaviour
 
     public void OnPlayMusic()
     {
-        globalController.timeOffset = Time.time;
+        showViewer.timeOffset = Time.time;
 
         musicStateChangeEvent.Invoke(MusicState.Play);
 

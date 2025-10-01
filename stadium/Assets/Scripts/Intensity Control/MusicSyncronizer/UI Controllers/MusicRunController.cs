@@ -3,7 +3,7 @@ using UnityEngine.UI;
 
 public class MusicRunController : MonoBehaviour
 {
-    public GlobalController globalController;
+    public ShowViewer showViewer;
 
     [SerializeField] private GameObject playButton;
     [SerializeField] private GameObject pauseButton;
@@ -15,19 +15,19 @@ public class MusicRunController : MonoBehaviour
         {
             playButton.SetActive(false);
             pauseButton.SetActive(true);
-            globalController.BeginLightshow();
+            showViewer.BeginLightshow();
         }
         else if (musicState == MusicState.Pause)
         {
             playButton.SetActive(true);
             pauseButton.SetActive(false);
-            globalController.EndLightshow();
+            showViewer.EndLightshow();
         }
         else if (musicState == MusicState.Stop)
         {
             playButton.SetActive(true);
             pauseButton.SetActive(false);
-            globalController.EndLightshow();
+            showViewer.EndLightshow();
         }
         else if (musicState == MusicState.NewMusicLoaded)
         {
