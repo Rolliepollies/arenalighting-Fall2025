@@ -99,8 +99,34 @@ public class ShowViewer : MonoBehaviour
         }
 
         allLEDs = tempLEDList.ToArray();
+        SaveLedInfoForShowBuilder(allLEDs);
     }
 
+
+    void SaveLedInfoForShowBuilder(GameObject[] allLEDs)
+    {
+        string sections = string.Join("\n", sectionIndex);
+        string rows = "";
+        string XZ = "";
+        foreach (GameObject LED in allLEDs)
+        {
+            XZ += (Mathf.Floor(LED.transform.position.x * 1000f) / 1000f).ToString() + ", " + (Mathf.Floor(LED.transform.position.z * 1000f) / 1000f).ToString() + "\n";
+        }
+
+        foreach (int[] section in rowIndex)
+        {
+            foreach (int x in section)
+            {
+                rows += x + "\n";
+            }
+        }
+        File.WriteAllText("postions.txt", XZ);
+
+        File.WriteAllText("rows.txt", rows);
+        
+        File.WriteAllText("sections.txt", sections);
+        
+    }
 
     // Update() is called every frame, so it's computationally expensive
     // However, for transitions that need to happen every frame (i.e. a crossfade), we have no choice
