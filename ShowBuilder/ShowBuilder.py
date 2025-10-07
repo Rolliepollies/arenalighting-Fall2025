@@ -1,7 +1,7 @@
 import sys
 import json
 from PyQt5.QtWidgets import (
-    QApplication, QMainWindow, QGraphicsScene, QGraphicsView,
+    QApplication, QMainWindow, QGraphicsScene, QGraphicsView, QTabWidget, QHBoxLayout,
     QGraphicsEllipseItem, QPushButton, QVBoxLayout, QWidget, QColorDialog, QSlider, QLabel
 )
 from PyQt5.QtCore import Qt, QTimer
@@ -103,7 +103,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("LED Mapper")
-        self.resize(800, 600)
+        self.resize(800, 800)
         self.setWindowFlag(Qt.WindowMaximizeButtonHint, True)
         self.setWindowFlag(Qt.WindowMinimizeButtonHint, True)
 
@@ -112,6 +112,16 @@ class MainWindow(QMainWindow):
         self.scene = LEDViewer()
         self.view = CustomGraphicsView(self.scene)
 
+        # Tabs
+        self.tabs = QTabWidget()
+        self.README_tab = QWidget()
+        self.frame_tab = QWidget()
+        self.color_tab = QWidget()
+
+        self.tabs.addTab(self.README_tab, "README")
+        self.tabs.addTab(self.frame_tab, "Frame")
+        self.tabs.addTab(self.color_tab, "Color")
+
         # Buttons
         self.save_button = QPushButton("Save Frame")
         self.color_button = QPushButton("Set Selected LEDs selected Hue")
@@ -119,14 +129,23 @@ class MainWindow(QMainWindow):
         self.save_button.clicked.connect(self.save_frame)
         self.color_button.clicked.connect(self.set_selected_color)
 
-        # Layout
-        layout = QVBoxLayout()
-        layout.addWidget(self.view)
-        layout.addWidget(self.color_button)
-        layout.addWidget(self.save_button)
+        # Layouts
+        frame_tab_layout = QVBoxLayout()
+        frame_tab_layout.addWidget(self.save_button)
 
+        color_tab_layout = QVBoxLayout()
+        color_tab_layout.addWidget(self.color_button)
+
+        self.frame_tab.setLayout(frame_tab_layout)
+        self.color_tab.setLayout(color_tab_layout)
+
+        container_layout = QVBoxLayout()
+        container_layout.addWidget(self.view)
+        container_layout.addWidget(self.tabs)
+
+        # Main container (central widget)
         container = QWidget()
-        container.setLayout(layout)
+        container.setLayout(container_layout)
         self.setCentralWidget(container)
 
         # Timer for animation (placeholder)
@@ -139,8 +158,8 @@ class MainWindow(QMainWindow):
         self.hue_slider.setValue(0)
         self.hue_label = QLabel("Hue: 0")
         self.hue_slider.valueChanged.connect(lambda v: self.hue_label.setText(f"Hue: {v}"))
-        layout.addWidget(self.hue_label)
-        layout.addWidget(self.hue_slider)
+        color_tab_layout.addWidget(self.hue_label)
+        color_tab_layout.addWidget(self.hue_slider)
 
     def update_effect(self):
         # No automatic animation for now
