@@ -1,11 +1,11 @@
 import sys
 import json
 from PyQt5.QtWidgets import (
-    QApplication, QMainWindow, QGraphicsScene, QGraphicsView, QTabWidget, QHBoxLayout,
+    QApplication, QMainWindow, QGraphicsScene, QGraphicsView, QTabWidget, QHBoxLayout, QLineEdit,
     QGraphicsEllipseItem, QPushButton, QVBoxLayout, QWidget, QColorDialog, QSlider, QLabel
 )
-from PyQt5.QtCore import Qt, QTimer
-from PyQt5.QtGui import QColor, QBrush, QPainter
+from PyQt5.QtCore import Qt, QTimer, QRegExp
+from PyQt5.QtGui import QColor, QBrush, QPainter, QIntValidator, QDoubleValidator, QRegExpValidator
 
 
 class CustomGraphicsView(QGraphicsView):
@@ -107,73 +107,138 @@ class MainWindow(QMainWindow):
         self.setWindowFlag(Qt.WindowMaximizeButtonHint, True)
         self.setWindowFlag(Qt.WindowMinimizeButtonHint, True)
 
+        # Timer for animation (placeholder)
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.update_effect)
+        self.timer.start(100)  # 10 fps
+        self.frameNumber = 0
 
         # Scene & view
         self.scene = LEDViewer()
         self.view = CustomGraphicsView(self.scene)
 
         # Tabs
-        self.tabs = QTabWidget()
-        self.README_tab = QWidget()
-        self.frame_tab = QWidget()
-        self.color_tab = QWidget()
+        tabs = QTabWidget()
+        README_tab = QWidget()
+        frame_tab = QWidget()
+        color_tab = QWidget()
 
-        self.tabs.addTab(self.README_tab, "README")
-        self.tabs.addTab(self.frame_tab, "Frame")
-        self.tabs.addTab(self.color_tab, "Color")
+        tabs.addTab(README_tab, "README")
+        tabs.addTab(frame_tab, "Frame")
+        tabs.addTab(color_tab, "Color")
 
         # Buttons
-        self.save_button = QPushButton("Save Frame")
-        self.color_button = QPushButton("Set Selected LEDs selected Hue")
+        save_button = QPushButton("Save Frame")
+        save_button.clicked.connect(self.save_frame)
+        save_button.setFixedWidth(save_button.sizeHint().width())
 
-        self.save_button.clicked.connect(self.save_frame)
-        self.color_button.clicked.connect(self.set_selected_color)
+        color_button = QPushButton("Color Selected LEDs")
+        color_button.clicked.connect(self.set_selected_color)
+        color_button.setFixedWidth(color_button.sizeHint().width())
+
+        # Color selection widgets
+        self.red_textBox, red_layout = self.create_rgb_slider("R")
+        self.green_textBox, green_layout = self.create_rgb_slider("G")
+        self.blue_textBox, blue_layout = self.create_rgb_slider("B")
+        self.alpha_textBox, alpha_layout = self.create_rgb_slider("A", alpha=True)
+
+        hex_label = QLabel("Hex Code: #")
+        hex_label.setFixedWidth(hex_label.sizeHint().width())
+
+        self.hex_textBox = QLineEdit("000000FF")
+        self.hex_textBox.setFixedWidth(100)
+        self.hex_textBox.textEdited.connect(self.update_rgba_values)
+        self.hex_textBox.setValidator(QRegExpValidator(QRegExp("[0-9A-Fa-f]{8}")))
+
+        hex_layout = QHBoxLayout()
+        hex_layout.setAlignment(Qt.AlignLeft)
+        hex_layout.addWidget(hex_label)
+        hex_layout.addWidget(self.hex_textBox)
 
         # Layouts
         frame_tab_layout = QVBoxLayout()
-        frame_tab_layout.addWidget(self.save_button)
+        frame_tab_layout.addWidget(save_button)
+        frame_tab.setLayout(frame_tab_layout)
 
         color_tab_layout = QVBoxLayout()
-        color_tab_layout.addWidget(self.color_button)
-
-        self.frame_tab.setLayout(frame_tab_layout)
-        self.color_tab.setLayout(color_tab_layout)
+        color_tab_layout.addLayout(red_layout)
+        color_tab_layout.addLayout(green_layout)
+        color_tab_layout.addLayout(blue_layout)
+        color_tab_layout.addLayout(alpha_layout)
+        color_tab_layout.addLayout(hex_layout)
+        color_tab_layout.addWidget(color_button)
+        color_tab.setLayout(color_tab_layout)
 
         container_layout = QVBoxLayout()
         container_layout.addWidget(self.view)
-        container_layout.addWidget(self.tabs)
+        container_layout.addWidget(tabs)
 
         # Main container (central widget)
         container = QWidget()
         container.setLayout(container_layout)
         self.setCentralWidget(container)
+        
 
-        # Timer for animation (placeholder)
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.update_effect)
-        self.frameNumber = 0
-        self.timer.start(100)  # 10 fps
-        self.hue_slider = QSlider(Qt.Horizontal)
-        self.hue_slider.setRange(0, 359)
-        self.hue_slider.setValue(0)
-        self.hue_label = QLabel("Hue: 0")
-        self.hue_slider.valueChanged.connect(lambda v: self.hue_label.setText(f"Hue: {v}"))
-        color_tab_layout.addWidget(self.hue_label)
-        color_tab_layout.addWidget(self.hue_slider)
+    def create_rgb_slider(self, label_text, alpha=False):
+        label = QLabel(f"{label_text}:")
+        label.setFixedWidth(20)
+
+        textBox = QLineEdit("0" if not alpha else "1")
+        textBox.setFixedWidth(50)
+        textBox.setValidator(QIntValidator(0, 255) if not alpha else QDoubleValidator(0.0, 1.0, 4))  # Only integers 0-255 or 4 digit values 0-1
+        textBox.textChanged.connect(lambda text: slider.setValue(int(text)) if not alpha else slider.setValue(int(float(text)*10000)))
+        textBox.textEdited.connect(self.update_hex_value)
+
+        slider = QSlider(Qt.Horizontal)
+        slider.setRange(0, 255) if not alpha else slider.setRange(0, 10000)
+        slider.setValue(0 if not alpha else 10000)
+        slider.setFixedWidth(100)
+        slider.valueChanged.connect(lambda v: textBox.setText(f"{v}" if not alpha else f"{round(v/10000, 4)}"))
+        slider.valueChanged.connect(self.update_hex_value)
+
+        layout = QHBoxLayout()
+        layout.setAlignment(Qt.AlignLeft)
+        layout.addWidget(label)
+        layout.addWidget(textBox)
+        layout.addWidget(slider)
+
+        return textBox, layout
+    
+    def update_hex_value(self):
+        red_value = int(self.red_textBox.text())
+        green_value = int(self.green_textBox.text())
+        blue_value = int(self.blue_textBox.text())
+        alpha_value = int(round(float(self.alpha_textBox.text()), 4) * 255)
+
+        self.hex_textBox.setText(f"{red_value:02X}{green_value:02X}{blue_value:02X}{alpha_value:02X}")
+
+    def update_rgba_values(self):
+        hex_text = self.hex_textBox.text()
+        if len(hex_text) == 8:
+            red = int(hex_text[0:2], 16)
+            green = int(hex_text[2:4], 16)
+            blue = int(hex_text[4:6], 16)
+            alpha = int(hex_text[6:8], 16) / 255.0
+            self.red_textBox.setText(f"{red}")
+            self.green_textBox.setText(f"{green}")
+            self.blue_textBox.setText(f"{blue}")
+            self.alpha_textBox.setText(f"{alpha:.4f}")
 
     def update_effect(self):
         # No automatic animation for now
         pass
 
     def set_selected_color(self):
-        hue = self.hue_slider.value()
-        color = QColor.fromHsv(hue, 255, 255)
+        red = int(self.red_textBox.text())
+        green = int(self.green_textBox.text())
+        blue = int(self.blue_textBox.text())
+        alpha = int(round(float(self.alpha_textBox.text()), 4) * 255)
+        color = QColor(red, green, blue, alpha)
         for led in self.scene.leds:
             if led.isSelected():
                 led.set_color(color)
 
     def save_frame(self):
-        print('hello')
         groups = []
         color_map = {}
         group_id = 1
@@ -206,12 +271,11 @@ class MainWindow(QMainWindow):
             "groups": groups
         }
 
-        print('end')
-        print(str(self.frameNumber) )
         folder = "ShowBuilderTest"
         filename = f"./stadium/Assets/Resources/{folder}/frame_{self.frameNumber}.json"
         with open(filename, "w", encoding="utf-8") as f:
             json.dump(frame_data, f, indent=2)
+            print(f"Saved frame_{self.frameNumber}.json to {filename}")
 
 
 if __name__ == "__main__":
