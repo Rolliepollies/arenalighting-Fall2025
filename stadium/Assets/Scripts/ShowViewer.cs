@@ -103,13 +103,16 @@ public class ShowViewer : MonoBehaviour
     }
 
 
+    //grabs postions and section number to use 
     void SaveLedInfoForShowBuilder(GameObject[] allLEDs)
     {
         string sections = string.Join("\n", sectionIndex);
         string rows = "";
         string XZ = "";
+        
         foreach (GameObject LED in allLEDs)
         {
+            
             XZ += (Mathf.Floor(LED.transform.position.x * 1000f) / 1000f).ToString() + ", " + (Mathf.Floor(LED.transform.position.z * 1000f) / 1000f).ToString() + "\n";
         }
 
