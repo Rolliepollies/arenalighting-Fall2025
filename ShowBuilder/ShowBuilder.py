@@ -1,12 +1,12 @@
+import os
 import sys
 import json
 from PyQt5.QtWidgets import (
-    QApplication, QMainWindow, QGraphicsScene, QGraphicsView, QTabWidget, QHBoxLayout, QLineEdit,
-    QGraphicsEllipseItem, QPushButton, QVBoxLayout, QWidget, QColorDialog, QSlider, QLabel
+    QApplication, QMainWindow, QGraphicsScene, QGraphicsView, QTabWidget, QComboBox, QHBoxLayout, QLineEdit,
+    QGraphicsEllipseItem, QPushButton, QVBoxLayout, QWidget, QColorDialog, QSlider, QLabel, QScrollArea, QGridLayout
 )
 from PyQt5.QtCore import Qt, QTimer, QRegExp
 from PyQt5.QtGui import QColor, QBrush, QPainter, QIntValidator, QDoubleValidator, QRegExpValidator
-
 
 class CustomGraphicsView(QGraphicsView):
     def __init__(self, scene):
@@ -127,14 +127,47 @@ class MainWindow(QMainWindow):
         tabs.addTab(frame_tab, "Frame")
         tabs.addTab(color_tab, "Color")
 
+        # Labels
+        readme_label = QLabel()
+        self.current_frame_label = QLabel()
+        self.current_frame_label.setFixedWidth(150)
+        self.current_frame_label.setFixedHeight(30)
+
+        # Scroll area for .json file selection
+        self.json_scroll_area = QScrollArea()
+        self.json_scroll_area.setFixedWidth(150)
+        self.json_scroll_area.setFixedHeight(150)
+
         # Buttons
-        save_button = QPushButton("Save Frame")
-        save_button.clicked.connect(self.save_frame)
-        save_button.setFixedWidth(save_button.sizeHint().width())
+        save_frame_button = QPushButton("Save Frame")
+        save_frame_button.clicked.connect(self.save_frame)
+        save_frame_button.setFixedWidth(150)
+        save_frame_button.setFixedHeight(20)
+
+        create_frame_button = QPushButton("Create New Frame")
+        create_frame_button.clicked.connect(self.create_new_frame)
+        create_frame_button.setFixedWidth(150)
+        create_frame_button.setFixedHeight(20)
+
+        delete_current_frame = QPushButton("Delete Current Frame")
+        delete_current_frame.clicked.connect(self.delete_current_frame)
+        delete_current_frame.setFixedWidth(150)
+        delete_current_frame.setFixedHeight(20)
 
         color_button = QPushButton("Color Selected LEDs")
         color_button.clicked.connect(self.set_selected_color)
-        color_button.setFixedWidth(color_button.sizeHint().width())
+        color_button.setFixedWidth(150)
+        color_button.setFixedHeight(20)
+
+        # Dropdowns
+        self.show_dropdown = QComboBox()
+        self.show_dropdown.setFixedWidth(150)
+        self.show_dropdown.setFixedHeight(20)
+        self.show_dropdown.currentIndexChanged.connect(self.update_json_scroll_area)
+        self.show_dropdown.currentIndexChanged.connect(self.load_frame)
+        
+        self.update_json_scroll_area()
+        self.update_show_dropdown()
 
         # Color selection widgets
         self.red_textBox, red_layout = self.create_rgb_slider("R")
@@ -156,8 +189,19 @@ class MainWindow(QMainWindow):
         hex_layout.addWidget(self.hex_textBox)
 
         # Layouts
-        frame_tab_layout = QVBoxLayout()
-        frame_tab_layout.addWidget(save_button)
+        frame_tab_layout = QHBoxLayout()
+        frame_tab_layout_left = QVBoxLayout()
+        frame_tab_layout_right = QVBoxLayout()
+
+        frame_tab_layout_left.addWidget(self.show_dropdown)
+        frame_tab_layout_left.addWidget(self.json_scroll_area)
+        frame_tab_layout_right.addWidget(self.current_frame_label)
+        frame_tab_layout_right.addWidget(save_frame_button)
+        frame_tab_layout_right.addWidget(create_frame_button)
+        frame_tab_layout_right.addWidget(delete_current_frame)
+
+        frame_tab_layout.addLayout(frame_tab_layout_left)
+        frame_tab_layout.addLayout(frame_tab_layout_right)
         frame_tab.setLayout(frame_tab_layout)
 
         color_tab_layout = QVBoxLayout()
@@ -271,12 +315,109 @@ class MainWindow(QMainWindow):
             "groups": groups
         }
 
-        folder = "ShowBuilderTest"
-        filename = f"./stadium/Assets/Resources/{folder}/frame_{self.frameNumber}.json"
+        self.frameNumber = (int(len(self.json_scroll_area.widget().children())) - 1) if self.current_frame_label.text() == f"Current Frame: temp" else self.frameNumber
+        self.current_frame_label.setText(f"Current Frame: {self.frameNumber}")
+
+        folder = str(self.show_dropdown.currentText())
+        filename = f"./stadium/Assets/Resources/{folder}/{self.frameNumber}.json"
         with open(filename, "w", encoding="utf-8") as f:
             json.dump(frame_data, f, indent=2)
-            print(f"Saved frame_{self.frameNumber}.json to {filename}")
+            print(f"Saved frame {self.frameNumber}.json to {filename}")
+        
+        self.update_json_scroll_area()
 
+
+
+    def load_frame(self, frame_number=None):
+        if frame_number == None:
+            frame_number = self.frameNumber
+        folder = str(self.show_dropdown.currentText())
+        filename = f"./stadium/Assets/Resources/{folder}/{frame_number}.json"
+        with open(filename, "r", encoding="utf-8") as f:
+            frame_data = json.load(f)
+            print(f"Loaded frame {frame_number}.json from {filename}")
+
+            # Apply the loaded frame data to the scene
+            for group in frame_data["groups"]:
+                color = QColor(
+                    int(group["color"]["r"] * 255),
+                    int(group["color"]["g"] * 255),
+                    int(group["color"]["b"] * 255),
+                    int(group["color"]["a"] * 255)
+                )
+                for led_index in group["LEDIndices"]:
+                    led = self.scene.leds[led_index]
+                    led.set_color(color)
+
+        self.frameNumber = int(frame_number)
+        self.current_frame_label.setText(f"Current Frame: {self.frameNumber}")
+
+    def update_show_dropdown(self):
+        self.show_dropdown.clear()
+        resources_dir = os.path.join(".", "stadium", "Assets", "Resources")
+        try:
+            for name in sorted(os.listdir(resources_dir)):
+                path = os.path.join(resources_dir, name)
+                if os.path.isdir(path):
+                    self.show_dropdown.addItem(name)
+        except FileNotFoundError:
+            pass
+
+    def update_json_scroll_area(self):
+        folder = str(self.show_dropdown.currentText())
+        json_dir = os.path.join(".", "stadium", "Assets", "Resources", folder)
+        if not os.path.exists(json_dir):
+            return
+
+        # Sort JSON files by the numeric index in their filename (e.g. "12.json" -> 12)
+        json_files_list = [f for f in os.listdir(json_dir) if f.endswith('.json')]
+        json_files_list.sort(key=lambda f: int(f.split('.')[0]))
+
+        # Clear previous layout
+        if self.json_scroll_area.widget():
+            self.json_scroll_area.widget().deleteLater()
+
+        content_widget = QWidget()
+        layout = QVBoxLayout(content_widget)
+
+        for json_file in json_files_list:
+            button = QPushButton(f"Frame {json_file.split('.')[0]}")
+            button.clicked.connect(lambda checked, f=json_file: self.load_frame(f.split('.')[0]))
+            layout.addWidget(button)
+
+        layout.addStretch()
+        self.json_scroll_area.setWidget(content_widget)
+        self.json_scroll_area.setWidgetResizable(True)
+
+    def create_new_frame(self):
+        self.current_frame_label.setText(f"Current Frame: temp")
+        for led in self.scene.leds:
+            led.set_color(QColor(0, 0, 0, 255))  # Reset to black
+
+    def delete_current_frame(self):
+        if self.current_frame_label.text() == f"Current Frame: temp":
+            print("Cannot delete unsaved frame.")
+            return
+        
+        folder = str(self.show_dropdown.currentText())
+        filename = f"./stadium/Assets/Resources/{folder}/{self.frameNumber}.json"
+        if os.path.exists(filename):
+            os.remove(filename)
+            print(f"Deleted frame {self.frameNumber}.json from {filename}")
+
+        fileList = os.listdir(f"./stadium/Assets/Resources/{folder}")
+        fileList.sort(key=lambda f: int(f.split('.')[0]))
+
+        for file in fileList[self.frameNumber:]:
+            num = int(file.split('.')[0])
+            os.rename(
+                f"./stadium/Assets/Resources/{folder}/{file}",
+                f"./stadium/Assets/Resources/{folder}/{num - 1}.json"
+            )
+        print(f"Renamed frame {num}.json to {num - 1}.json")
+
+        self.load_frame(self.frameNumber - 1 if self.frameNumber > 0 else 0)
+        self.update_json_scroll_area()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
