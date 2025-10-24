@@ -65,8 +65,27 @@ class LEDViewer(QGraphicsScene):
         super().__init__()
         self.setSceneRect(-1500, -2000, 3000, 3500)
 
-        # Create LEDs
+        # Create LEDs and sves row and section numbers
         self.create_LEDs()
+        self.sectionsRowsInit()
+        
+        
+        
+    def sectionsRowsInit(self):
+        self.sections = []
+        self.rows = []
+        temp = -1
+        with open("showBuilder/sections.txt", 'r', encoding='utf-8') as f:
+            for line in f:
+                if temp != -1:
+                    self.sections.append([int(temp), int(line.strip())])
+                temp = line.strip()
+        self.sections.append([int(temp), len(self.leds)])
+        print(self.sections)        
+        with open("showBuilder/rows.txt", 'r', encoding='utf-8') as f:
+            for line in f:
+                self.rows.append(int(line.strip()))
+        print(self.sections)
 
     def create_LEDs(self):
         self.leds = []
@@ -126,10 +145,12 @@ class MainWindow(QMainWindow):
         README_tab = QWidget()
         frame_tab = QWidget()
         color_tab = QWidget()
+        preset_tab = QWidget()
 
         tabs.addTab(README_tab, "README")
         tabs.addTab(frame_tab, "Frame")
         tabs.addTab(color_tab, "Color")
+        tabs.addTab(preset_tab, "Presets")
 
         # Buttons
         save_button = QPushButton("Save Frame")
@@ -172,6 +193,14 @@ class MainWindow(QMainWindow):
         color_tab_layout.addLayout(hex_layout)
         color_tab_layout.addWidget(color_button)
         color_tab.setLayout(color_tab_layout)
+        
+        
+        preset_button = QPushButton("plaid")
+        preset_button.clicked.connect(self.plaid)
+        preset_button.setFixedWidth(color_button.sizeHint().width())
+        preset_layout = QVBoxLayout()
+        preset_layout.addWidget(preset_button)
+        preset_tab.setLayout(preset_layout)
 
         container_layout = QVBoxLayout()
         container_layout.addWidget(self.view)
@@ -231,12 +260,38 @@ class MainWindow(QMainWindow):
     def update_effect(self):
         # No automatic animation for now
         pass
+    
+    def plaid(self):
+        leds = self.scene.leds
+        index = 0
+        odd = False
+        
+        which = QColor(200, 200, 200, 255)
+        
+        for i in self.scene.sections:
+            print(i)
+            color = QColor(200, 200, 200, 255)
+            other = QColor(0, 200, 200, 255)
+            if odd:
+                which =color
+            else:
+                which = other
+            
+            while index < i[1]:
+                
+                leds[index].set_color(which)
+                index += 1
+            odd = not odd
+            print(odd)
+                
+            
 
     def set_selected_color(self):
         red = int(self.red_textBox.text())
         green = int(self.green_textBox.text())
         blue = int(self.blue_textBox.text())
         alpha = int(round(float(self.alpha_textBox.text()), 4) * 255)
+        print(red, green, blue, alpha)
         color = QColor(red, green, blue, alpha)
         for led in self.scene.leds:
             if led.isSelected():
