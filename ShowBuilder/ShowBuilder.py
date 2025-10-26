@@ -272,10 +272,42 @@ class MainWindow(QMainWindow):
         
         preset_button = QPushButton("plaid")
         preset_button.clicked.connect(self.plaid)
-        preset_button.setFixedWidth(color_button.sizeHint().width())
+        preset_button.setFixedWidth(100)
+
+        # Primary hex box
+        primary_hex_label = QLabel("Primary Hex: #")
+        primary_hex_label.setFixedWidth(primary_hex_label.sizeHint().width())
+        self.primary_hex_textBox = QLineEdit("FF0000FF")  # default red
+        self.primary_hex_textBox.setFixedWidth(100)
+        self.primary_hex_textBox.setValidator(QRegExpValidator(QRegExp("[0-9A-Fa-f]{8}")))
+        self.primary_hex_textBox.textEdited.connect(self.primary)
+
+        primary_hex_layout = QHBoxLayout()
+        primary_hex_layout.setAlignment(Qt.AlignLeft)
+        primary_hex_layout.addWidget(primary_hex_label)
+        primary_hex_layout.addWidget(self.primary_hex_textBox)
+
+        # Secondary hex box
+        secondary_hex_label = QLabel("Secondary Hex: #")
+        secondary_hex_label.setFixedWidth(secondary_hex_label.sizeHint().width())
+        self.secondary_hex_textBox = QLineEdit("0000FFFF")  # default cyan
+        self.secondary_hex_textBox.setFixedWidth(100)
+        self.secondary_hex_textBox.setValidator(QRegExpValidator(QRegExp("[0-9A-Fa-f]{8}")))
+        self.secondary_hex_textBox.textEdited.connect(self.secondary)
+
+        secondary_hex_layout = QHBoxLayout()
+        secondary_hex_layout.setAlignment(Qt.AlignLeft)
+        secondary_hex_layout.addWidget(secondary_hex_label)
+        secondary_hex_layout.addWidget(self.secondary_hex_textBox)
+
+        # Layout
         preset_layout = QVBoxLayout()
         preset_layout.addWidget(preset_button)
+        preset_layout.addLayout(primary_hex_layout)
+        preset_layout.addLayout(secondary_hex_layout)
         preset_tab.setLayout(preset_layout)
+
+       
 
         single_button = QPushButton("single")
         single_button.clicked.connect(self.single)
@@ -335,6 +367,28 @@ class MainWindow(QMainWindow):
 
         self.hex_textBox.setText(f"{red_value:02X}{green_value:02X}{blue_value:02X}{alpha_value:02X}")
 
+
+    #simplify this later
+    def primary(self):
+        hex_text = self.primary_hex_textBox.text()
+        if len(hex_text) == 8:
+            r = int(hex_text[0:2], 16)
+            g = int(hex_text[2:4], 16)
+            b = int(hex_text[4:6], 16)
+            a = int(hex_text[6:8], 16) 
+            self.primary_color = QColor(r, g, b, a)
+            
+        
+    def secondary(self):
+        hex_text = self.secondary_hex_textBox.text()
+        if len(hex_text) == 8:
+            r = int(hex_text[0:2], 16)
+            g = int(hex_text[2:4], 16)
+            b = int(hex_text[4:6], 16)
+            a = int(hex_text[6:8], 16) 
+            self.secondary_color = QColor(r, g, b, a)
+            
+    
     def update_rgba_values(self):
         hex_text = self.hex_textBox.text()
         if len(hex_text) == 8:
@@ -342,10 +396,10 @@ class MainWindow(QMainWindow):
             green = int(hex_text[2:4], 16)
             blue = int(hex_text[4:6], 16)
             alpha = int(hex_text[6:8], 16) / 255.0
-            self.red_textBox.setText(f"{red}")
-            self.green_textBox.setText(f"{green}")
-            self.blue_textBox.setText(f"{blue}")
-            self.alpha_textBox.setText(f"{alpha:.4f}")
+            self.sred_textBox.setText(f"{red}")
+            self.sgreen_textBox.setText(f"{green}")
+            self.sblue_textBox.setText(f"{blue}")
+            self.salpha_textBox.setText(f"{alpha:.4f}")
 
     def update_effect(self):
         # No automatic animation for now
@@ -365,16 +419,16 @@ class MainWindow(QMainWindow):
         index = 0
         odd = False
         
-        which = QColor(200, 200, 200, 255)
+        primary = getattr(self, "primary_color", QColor(255,0,0,255))
+        secondary = getattr(self, "secondary_color", QColor(0,0,255,255))
         
         for i in self.scene.sections:
             print(i)
-            color = QColor(200, 200, 200, 255)
-            other = QColor(0, 200, 200, 255)
+           
             if odd:
-                which =color
+                which = primary
             else:
-                which = other
+                which = secondary
             
             while index < i[1]:
                 
