@@ -16,13 +16,13 @@ class CustomGraphicsView(QGraphicsView):
         self.setViewportUpdateMode(QGraphicsView.FullViewportUpdate)
         self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
         self.setResizeAnchor(QGraphicsView.AnchorUnderMouse)
-
+        self.scene = scene
         self.scale(0.2, 0.2)  # Initial zoom level
         
         self._pan_active = False
         self._last_pan_point = None
 
-    def mousePressEvent(self, event):
+    def mousePressEvent(self, event): 
         if event.button() == Qt.RightButton:
             self._pan_active = True
             self._last_pan_point = event.pos()
@@ -48,7 +48,7 @@ class CustomGraphicsView(QGraphicsView):
         if event.button() == Qt.RightButton:
             self._pan_active = False
             self.setCursor(Qt.ArrowCursor)
-        super().mouseReleaseEvent(event)
+        
 
     def wheelEvent(self, event):
         zoom_in = 1.2
@@ -64,11 +64,81 @@ class LEDViewer(QGraphicsScene):
     def __init__(self):
         super().__init__()
         self.setSceneRect(-1500, -2000, 3000, 3500)
-
+        self.mode = "single"
         # Create LEDs and sves row and section numbers
         self.create_LEDs()
         self.sectionsRowsInit()
         
+    def mousePressEvent(self, event):
+        
+        if event.button() != Qt.LeftButton:
+            super().mousePressEvent(event)
+            return
+        
+        item = self.itemAt(event.scenePos(), self.views()[0].transform())
+        
+        
+        print(self.mode)
+        if isinstance(item, LEDItem):
+            if self.mode == "single":
+                modifiers = QApplication.keyboardModifiers()
+                if modifiers & Qt.ControlModifier:
+                # Toggle selection instead of clearing
+                    item.setSelected(not item.isSelected())
+                else:
+                    # Normal click: clear all others
+                    for led in self.leds:
+                        led.setSelected(False)
+                    item.setSelected(True)
+            elif self.mode == "section":
+                print("section")
+                sect = self.sections
+                # Find which section this LED belongs to
+                section_index = -1
+                index = 0
+                for i in sect:
+                    if i[0] <= item.index < i[1]:
+                        section_index = index
+                        break
+                    index += 1
+                print(section_index)
+                if section_index >=0:
+                    modifiers = QApplication.keyboardModifiers()
+                    if not (modifiers & Qt.ControlModifier):
+                        for led in self.leds:
+                            led.setSelected(False)
+                    for led in self.leds[sect[section_index][0]:sect[section_index][1]]:
+                        led.setSelected(True)
+                        
+
+            elif self.mode == "row":
+                print("row")
+                row = self.rows
+            # Find which row this LED belongs to
+            # You said rows.txt stores LED indices where rows end, so:
+                rowIndex = -1
+                index = 0 
+
+                for i in row:
+                    print(i)
+                    if i[0] <= item.index < i[1]:
+                        rowIndex = index
+                        break
+
+                    index += 1
+                    
+                print(rowIndex)
+                if rowIndex >= 0:
+                    modifiers = QApplication.keyboardModifiers()
+                    if not (modifiers & Qt.ControlModifier):
+                        for led in self.leds:
+                            led.setSelected(False)
+                    for led in self.leds[row[rowIndex][0]:row[rowIndex][1]]:
+                        led.setSelected(True)
+        # Only call super() if you didn't manually handle the click
+        else:
+            super().mousePressEvent(event)
+
         
         
     def sectionsRowsInit(self):
@@ -80,12 +150,15 @@ class LEDViewer(QGraphicsScene):
                 if temp != -1:
                     self.sections.append([int(temp), int(line.strip())])
                 temp = line.strip()
-        self.sections.append([int(temp), len(self.leds)])
-        print(self.sections)        
+        self.sections.append([int(temp), len(self.leds)])  
+        temp = -1     
         with open("showBuilder/rows.txt", 'r', encoding='utf-8') as f:
             for line in f:
-                self.rows.append(int(line.strip()))
-        print(self.sections)
+                if temp != -1:
+                    self.rows.append([int(temp), int(line.strip())])
+                temp = line.strip()
+        self.rows.append([int(temp), len(self.leds)])
+    
 
     def create_LEDs(self):
         self.leds = []
@@ -146,11 +219,13 @@ class MainWindow(QMainWindow):
         frame_tab = QWidget()
         color_tab = QWidget()
         preset_tab = QWidget()
+        mode_tab = QWidget()
 
         tabs.addTab(README_tab, "README")
         tabs.addTab(frame_tab, "Frame")
         tabs.addTab(color_tab, "Color")
         tabs.addTab(preset_tab, "Presets")
+        tabs.addTab(mode_tab, "Mode")
 
         # Buttons
         save_button = QPushButton("Save Frame")
@@ -201,6 +276,21 @@ class MainWindow(QMainWindow):
         preset_layout = QVBoxLayout()
         preset_layout.addWidget(preset_button)
         preset_tab.setLayout(preset_layout)
+
+        single_button = QPushButton("single")
+        single_button.clicked.connect(self.single)
+        single_button.setFixedWidth(color_button.sizeHint().width())
+        row_button = QPushButton("row")
+        row_button.clicked.connect(self.row)
+        row_button.setFixedWidth(color_button.sizeHint().width())
+        section_button = QPushButton("section")
+        section_button.clicked.connect(self.section)
+        section_button.setFixedWidth(color_button.sizeHint().width())
+        mode_layout = QVBoxLayout()
+        mode_layout.addWidget(single_button)
+        mode_layout.addWidget(row_button)
+        mode_layout.addWidget(section_button)
+        mode_tab.setLayout(mode_layout)
 
         container_layout = QVBoxLayout()
         container_layout.addWidget(self.view)
@@ -260,6 +350,15 @@ class MainWindow(QMainWindow):
     def update_effect(self):
         # No automatic animation for now
         pass
+    
+    def row(self):
+        self.scene.mode = "row"
+        
+    def section(self):
+        self.scene.mode = "section"
+        
+    def single(self):
+        self.scene.mode = "single"
     
     def plaid(self):
         leds = self.scene.leds
