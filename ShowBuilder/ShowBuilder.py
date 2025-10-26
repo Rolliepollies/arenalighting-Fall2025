@@ -3,7 +3,7 @@ import sys
 import json
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QGraphicsScene, QGraphicsView, QTabWidget, QComboBox, QHBoxLayout, QLineEdit,
-    QGraphicsEllipseItem, QPushButton, QVBoxLayout, QWidget, QColorDialog, QSlider, QLabel, QScrollArea, QGridLayout
+    QGraphicsEllipseItem, QPushButton, QVBoxLayout, QWidget, QColorDialog, QSlider, QLabel, QScrollArea, QGridLayout, QCheckBox
 )
 from PyQt5.QtCore import Qt, QTimer, QRegExp
 from PyQt5.QtGui import QColor, QBrush, QPainter, QIntValidator, QDoubleValidator, QRegExpValidator
@@ -154,6 +154,11 @@ class MainWindow(QMainWindow):
         delete_current_frame.setFixedWidth(150)
         delete_current_frame.setFixedHeight(20)
 
+        duplicate_frame_button = QPushButton("Duplicate Current Frame")
+        duplicate_frame_button.setFixedWidth(150)
+        duplicate_frame_button.setFixedHeight(20)
+        duplicate_frame_button.clicked.connect(self.duplicate_current_frame)
+
         color_button = QPushButton("Color Selected LEDs")
         color_button.clicked.connect(self.set_selected_color)
         color_button.setFixedWidth(150)
@@ -193,11 +198,13 @@ class MainWindow(QMainWindow):
         frame_tab_layout_left = QVBoxLayout()
         frame_tab_layout_right = QVBoxLayout()
 
+        frame_tab_layout_left.addWidget(self.current_frame_label)
         frame_tab_layout_left.addWidget(self.show_dropdown)
         frame_tab_layout_left.addWidget(self.json_scroll_area)
-        frame_tab_layout_right.addWidget(self.current_frame_label)
+
         frame_tab_layout_right.addWidget(save_frame_button)
         frame_tab_layout_right.addWidget(create_frame_button)
+        frame_tab_layout_right.addWidget(duplicate_frame_button)
         frame_tab_layout_right.addWidget(delete_current_frame)
 
         frame_tab_layout.addLayout(frame_tab_layout_left)
@@ -326,8 +333,6 @@ class MainWindow(QMainWindow):
         
         self.update_json_scroll_area()
 
-
-
     def load_frame(self, frame_number=None):
         if frame_number == None:
             frame_number = self.frameNumber
@@ -394,30 +399,53 @@ class MainWindow(QMainWindow):
         for led in self.scene.leds:
             led.set_color(QColor(0, 0, 0, 255))  # Reset to black
 
+    def duplicate_current_frame(self):
+        folder = str(self.show_dropdown.currentText())
+        source_filename = f"./stadium/Assets/Resources/{folder}/{self.frameNumber}.json"
+
+        # Shift existing frames to make space for the duplicate
+        self.update_frame_numbers(direction=True)
+
+        # Copy the current frame to the new frame
+        dest_filename = f"./stadium/Assets/Resources/{folder}/{self.frameNumber + 1}.json"
+        with open(source_filename, "r", encoding="utf-8") as src_file, open(dest_filename, "w", encoding="utf-8") as dst_file:
+            dst_file.write(src_file.read())
+
+        self.update_json_scroll_area()
+
     def delete_current_frame(self):
         if self.current_frame_label.text() == f"Current Frame: temp":
             print("Cannot delete unsaved frame.")
             return
         
+        # Delete the current frame file
         folder = str(self.show_dropdown.currentText())
         filename = f"./stadium/Assets/Resources/{folder}/{self.frameNumber}.json"
         if os.path.exists(filename):
             os.remove(filename)
             print(f"Deleted frame {self.frameNumber}.json from {filename}")
 
+        self.update_frame_numbers(direction=False)
+
+        self.load_frame(self.frameNumber - 1 if self.frameNumber > 0 else 0)
+    
+    # Renames frames after insertion or deletion to maintain sequence
+    # direction: True = insert, False = delete
+    def update_frame_numbers(self, direction:bool):
+        folder = str(self.show_dropdown.currentText())
         fileList = os.listdir(f"./stadium/Assets/Resources/{folder}")
         fileList.sort(key=lambda f: int(f.split('.')[0]))
 
-        for file in fileList[self.frameNumber:]:
+        for file in (fileList[self.frameNumber:] if not direction else reversed(fileList[self.frameNumber + 1:])):
             num = int(file.split('.')[0])
             os.rename(
                 f"./stadium/Assets/Resources/{folder}/{file}",
-                f"./stadium/Assets/Resources/{folder}/{num - 1}.json"
+                f"./stadium/Assets/Resources/{folder}/{num + 1 if direction else num - 1}.json"
             )
-        print(f"Renamed frame {num}.json to {num - 1}.json")
+            print(f"Renamed frame {num}.json to {num + 1 if direction else num - 1}.json")
 
-        self.load_frame(self.frameNumber - 1 if self.frameNumber > 0 else 0)
         self.update_json_scroll_area()
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
