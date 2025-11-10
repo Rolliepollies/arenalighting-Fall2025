@@ -269,7 +269,7 @@ class MainWindow(QMainWindow):
         self.show_dropdown.setFixedWidth(150)
         self.show_dropdown.setFixedHeight(20)
         self.show_dropdown.currentIndexChanged.connect(self.update_json_scroll_area)
-        self.show_dropdown.currentIndexChanged.connect(self.load_frame)
+        self.show_dropdown.currentIndexChanged.connect(lambda: self.load_frame(0))
         
         self.update_json_scroll_area()
         self.update_show_dropdown()

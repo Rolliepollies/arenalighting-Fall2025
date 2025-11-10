@@ -26,7 +26,7 @@ public class MenuBarsController : MonoBehaviour
     // It would be much better to 
     void Update()
     {
-        colorButton.image.color = colorPannel.activeSelf ? activeColor : inactiveColor;
+        colorButton.image.color = colorPanel.activeSelf ? activeColor : inactiveColor;
         musicButton.image.color = musicPanel.activeSelf ? activeColor : inactiveColor;
 
         if (Input.GetKeyDown(KeyCode.U))
