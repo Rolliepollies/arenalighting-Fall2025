@@ -126,7 +126,6 @@ public class MusicSynchronizer : MonoBehaviour
 
     public void OnPlayMusic()
     {
-        showViewer.timeOffset = Time.time;
 
         musicStateChangeEvent.Invoke(MusicState.Play);
 
