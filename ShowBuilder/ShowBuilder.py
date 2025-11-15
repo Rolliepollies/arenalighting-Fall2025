@@ -3,10 +3,11 @@ import sys
 import json
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QGraphicsScene, QGraphicsView, QTabWidget, QComboBox, QHBoxLayout, QLineEdit,
-    QGraphicsEllipseItem, QPushButton, QVBoxLayout, QWidget, QColorDialog, QSlider, QLabel, QScrollArea, QGridLayout, QCheckBox
+    QGraphicsEllipseItem, QPushButton, QVBoxLayout, QWidget, QColorDialog, QSlider, QLabel, QScrollArea, QGridLayout, QCheckBox, QFileDialog, QMessageBox
 )
 from PyQt5.QtCore import Qt, QTimer, QRegExp
-from PyQt5.QtGui import QColor, QBrush, QPainter, QIntValidator, QDoubleValidator, QRegExpValidator
+from PyQt5.QtGui import QColor, QBrush, QPainter, QIntValidator, QDoubleValidator, QRegExpValidator, QImage, QPixmap
+from PIL import Image
 
 class CustomGraphicsView(QGraphicsView):
     def __init__(self, scene):
@@ -226,6 +227,7 @@ class MainWindow(QMainWindow):
         tabs.addTab(color_tab, "Color")
         tabs.addTab(preset_tab, "Presets")
         tabs.addTab(mode_tab, "Mode")
+        tabs.addTab(self.create_image_tab(), "Image Loader")
 
         # Labels
         readme_label = QLabel()
@@ -383,6 +385,42 @@ class MainWindow(QMainWindow):
         container = QWidget()
         container.setLayout(container_layout)
         self.setCentralWidget(container)
+
+    def create_image_tab(self):
+        layout = QVBoxLayout()
+
+        # Image preview
+        self.image_preview = QLabel("No image loaded")
+        self.image_preview.setAlignment(Qt.AlignCenter)
+        self.image_preview.setFixedSize(300, 300)
+        self.image_preview.setStyleSheet("border: 1px solid gray;")
+        layout.addWidget(self.image_preview)
+
+        # Rotation buttons
+        rotate_layout = QHBoxLayout()
+        rotate_left_btn = QPushButton("⟲ Rotate Left")
+        rotate_right_btn = QPushButton("⟳ Rotate Right")
+
+        rotate_left_btn.clicked.connect(lambda: self.rotate_loaded_image(-90))
+        rotate_right_btn.clicked.connect(lambda: self.rotate_loaded_image(90))
+
+        rotate_layout.addWidget(rotate_left_btn)
+        rotate_layout.addWidget(rotate_right_btn)
+        layout.addLayout(rotate_layout)
+
+        # Load image button
+        load_button = QPushButton("Select Image")
+        load_button.clicked.connect(self.pick_image_file)
+        layout.addWidget(load_button)
+
+        # Apply image to LEDs
+        apply_button = QPushButton("Apply Image to LEDs")
+        apply_button.clicked.connect(self.load_image_onto_leds)
+        layout.addWidget(apply_button)
+
+        widget = QWidget()
+        widget.setLayout(layout)
+        return widget
         
 
     def create_rgb_slider(self, label_text, alpha=False):
@@ -488,7 +526,75 @@ class MainWindow(QMainWindow):
             odd = not odd
             print(odd)
                 
-            
+    def pick_image_file(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Select Image", "", "Images (*.png *.jpg *.jpeg *.bmp)"
+        )
+        if not path:
+            return
+
+        self.loaded_image_path = path
+        self.loaded_image = Image.open(path).convert("RGBA")  # keep transparency
+        self.update_image_preview()
+
+    def rotate_loaded_image(self, angle):
+        if not hasattr(self, "loaded_image"):
+            return
+
+        # Rotate PIL image
+        self.loaded_image = self.loaded_image.rotate(angle, expand=True)
+        self.update_image_preview()
+
+    def update_image_preview(self):
+        if not hasattr(self, "loaded_image"):
+            return
+
+        img = self.loaded_image.copy()
+        img.thumbnail((300, 300))  # fit preview box
+
+        data = img.tobytes("raw", "RGBA")
+        qimg = QImage(data, img.width, img.height, QImage.Format_RGBA8888)
+        pix = QPixmap.fromImage(qimg)
+
+        self.image_preview.setPixmap(pix)
+
+    def load_image_onto_leds(self):
+        if not hasattr(self, "loaded_image"):
+            QMessageBox.warning(self, "No Image", "Please select an image first.")
+            return
+
+        img = self.loaded_image.convert("RGB")
+
+        # Get selected LEDs
+        selected_leds = [led for led in self.scene.leds if led.isSelected()]
+        if not selected_leds:
+            QMessageBox.warning(self, "No LEDs Selected", "Please select some LEDs first.")
+            return
+
+        # Resize image to number of LEDs (square-ish)
+        num_leds = len(selected_leds)
+        grid_size = int(num_leds ** 0.5)
+        if grid_size < 1:
+            return
+
+        img = img.resize((grid_size, grid_size))
+        width, height = img.size
+
+        # Normalize LED positions
+        min_x = min(l.x() for l in selected_leds)
+        max_x = max(l.x() for l in selected_leds)
+        min_y = min(l.y() for l in selected_leds)
+        max_y = max(l.y() for l in selected_leds)
+
+        for led in selected_leds:
+            lx = (led.x() - min_x) / (max_x - min_x + 1e-6)
+            ly = (led.y() - min_y) / (max_y - min_y + 1e-6)
+
+            px = int(lx * (width - 1))
+            py = int(ly * (height - 1))
+
+            r, g, b = img.getpixel((px, py))
+            led.set_color(QColor(r, g, b, 255))
 
     def set_selected_color(self):
         red = int(self.red_textBox.text())
