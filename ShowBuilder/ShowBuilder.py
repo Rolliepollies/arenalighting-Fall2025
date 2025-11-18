@@ -1,8 +1,8 @@
 import os
 import sys
 import json
-import random
 import math
+import random
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QGraphicsScene, QGraphicsView, QTabWidget, QComboBox, QHBoxLayout, QLineEdit,
     QGraphicsEllipseItem, QPushButton, QVBoxLayout, QWidget, QColorDialog, QSlider, QLabel, QScrollArea, QGridLayout, QCheckBox, QFileDialog, QMessageBox
@@ -10,7 +10,6 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt, QTimer, QRegExp, QPointF, QLineF, QRectF
 from PyQt5.QtGui import QColor, QBrush, QPainter, QIntValidator, QDoubleValidator, QRegExpValidator, QImage, QPixmap
 from PIL import Image
-
 
 class CustomGraphicsView(QGraphicsView):
     def __init__(self, scene):
@@ -142,7 +141,6 @@ class LEDViewer(QGraphicsScene):
     def sectionsRowsInit(self):
         self.sections = []
         self.rows = []
-        self.twinkle = []
         temp = -1
         with open("showBuilder/sections.txt", 'r', encoding='utf-8') as f:
             for line in f:
@@ -170,9 +168,9 @@ class LEDViewer(QGraphicsScene):
                 z = float(line[1].strip())
                 if index > 16862:
                     if index > 20800:
-                        x = x -3
-                    else:
                         x += 3
+                    else:
+                        x -= 3
                 led = LEDItem(x*40, z*40, index)
                 self.addItem(led)
                 self.leds.append(led)
@@ -192,9 +190,6 @@ class LEDItem(QGraphicsEllipseItem):
     def set_color(self, color: QColor):
         self.brush.setColor(color)
         self.setBrush(self.brush)
-        
- 
-            
 
 
 class MainWindow(QMainWindow):
@@ -279,9 +274,17 @@ class MainWindow(QMainWindow):
         section_button.clicked.connect(self.section)
         section_button.setFixedWidth(color_button.sizeHint().width())
 
-        preset_button = QPushButton("plaid")
-        preset_button.clicked.connect(self.plaid)
-        preset_button.setFixedWidth(100)
+        plaid_button = QPushButton("plaid")
+        plaid_button.clicked.connect(self.plaid)
+        plaid_button.setFixedWidth(100)
+        
+        twinkle_button = QPushButton("Twinkle")
+        twinkle_button.clicked.connect(self.twinkle)
+        twinkle_button.setFixedWidth(100)
+        
+        wave_button = QPushButton("wave")
+        wave_button.clicked.connect(self.wave)
+        wave_button.setFixedWidth(100)
 
         # Color selection widgets
         self.red_textBox, red_layout = self.create_rgb_slider("R")
@@ -302,29 +305,10 @@ class MainWindow(QMainWindow):
         hex_layout.addWidget(hex_label)
         hex_layout.addWidget(self.hex_textBox)
 
-        # Layouts
-        frame_tab_layout = QVBoxLayout()
-        frame_tab_layout.addWidget(save_button)
-        frame_tab.setLayout(frame_tab_layout)
-
-        color_tab_layout = QVBoxLayout()
-        color_tab_layout.addLayout(red_layout)
-        color_tab_layout.addLayout(green_layout)
-        color_tab_layout.addLayout(blue_layout)
-        color_tab_layout.addLayout(alpha_layout)
-        color_tab_layout.addLayout(hex_layout)
-        color_tab_layout.addWidget(color_button)
-        color_tab.setLayout(color_tab_layout)
-        
-        
-        preset_button = QPushButton("plaid")
-        preset_button.clicked.connect(self.plaid)
-        preset_button.setFixedWidth(100)
-
         # Primary hex box
         primary_hex_label = QLabel("Primary Hex: #")
         primary_hex_label.setFixedWidth(primary_hex_label.sizeHint().width())
-        self.primary_hex_textBox = QLineEdit("000080F")  # default navy
+        self.primary_hex_textBox = QLineEdit("FF0000FF")  # default red
         self.primary_hex_textBox.setFixedWidth(100)
         self.primary_hex_textBox.setValidator(QRegExpValidator(QRegExp("[0-9A-Fa-f]{8}")))
         self.primary_hex_textBox.textEdited.connect(self.primary)
@@ -337,7 +321,7 @@ class MainWindow(QMainWindow):
         # Secondary hex box
         secondary_hex_label = QLabel("Secondary Hex: #")
         secondary_hex_label.setFixedWidth(secondary_hex_label.sizeHint().width())
-        self.secondary_hex_textBox = QLineEdit("FFFFFFFF")  # default white
+        self.secondary_hex_textBox = QLineEdit("0000FFFF")  # default cyan
         self.secondary_hex_textBox.setFixedWidth(100)
         self.secondary_hex_textBox.setValidator(QRegExpValidator(QRegExp("[0-9A-Fa-f]{8}")))
         self.secondary_hex_textBox.textEdited.connect(self.secondary)
@@ -346,6 +330,8 @@ class MainWindow(QMainWindow):
         secondary_hex_layout.setAlignment(Qt.AlignLeft)
         secondary_hex_layout.addWidget(secondary_hex_label)
         secondary_hex_layout.addWidget(self.secondary_hex_textBox)
+        
+        # Third hex box
         
         third_hex_label = QLabel("Thirdary Hex: #")
         third_hex_label.setFixedWidth(third_hex_label.sizeHint().width())
@@ -359,29 +345,68 @@ class MainWindow(QMainWindow):
         third_hex_layout.addWidget(third_hex_label)
         third_hex_layout.addWidget(self.third_hex_textBox)
 
-        # Layout
-        preset_layout = QVBoxLayout()
-        preset_layout.addWidget(preset_button)
-        preset_layout.addLayout(primary_hex_layout)
-        preset_layout.addLayout(secondary_hex_layout)
-        preset_tab.setLayout(preset_layout)
+        # Duration text box
+        duration_label = QLabel("Duration (ms):")
+        duration_label.setFixedWidth(duration_label.sizeHint().width())
+        self.duration_textBox = QLineEdit("1000")  # default 1000 ms
+        self.duration_textBox.setFixedWidth(100)
+        self.duration_textBox.setValidator(QIntValidator(0, 100000))  # Allow durations from 0 to 100000 ms
 
-       
+        duration_layout = QHBoxLayout()
+        duration_layout.setAlignment(Qt.AlignLeft)
+        duration_layout.addWidget(duration_label)
+        duration_layout.addWidget(self.duration_textBox)
 
-        single_button = QPushButton("single")
-        single_button.clicked.connect(self.single)
-        single_button.setFixedWidth(color_button.sizeHint().width())
-        row_button = QPushButton("row")
-        row_button.clicked.connect(self.row)
-        row_button.setFixedWidth(color_button.sizeHint().width())
-        section_button = QPushButton("section")
-        section_button.clicked.connect(self.section)
-        section_button.setFixedWidth(color_button.sizeHint().width())
-        mode_layout = QVBoxLayout()
-        mode_layout.addWidget(single_button)
-        mode_layout.addWidget(row_button)
-        mode_layout.addWidget(section_button)
-        mode_tab.setLayout(mode_layout)
+        # Dropdowns
+        self.show_dropdown = QComboBox()
+        self.show_dropdown.setFixedWidth(150)
+        self.show_dropdown.setFixedHeight(20)
+        self.show_dropdown.currentIndexChanged.connect(self.update_json_scroll_area)
+        self.show_dropdown.currentIndexChanged.connect(lambda: self.load_frame(0))
+
+        self.update_json_scroll_area()
+        self.update_show_dropdown()
+
+        # Layouts
+        frame_tab_layout = QHBoxLayout()
+        frame_tab_layout_left = QVBoxLayout()
+        frame_tab_layout_right = QVBoxLayout()
+
+        frame_tab_layout_left.addWidget(self.current_frame_label)
+        frame_tab_layout_left.addWidget(self.show_dropdown)
+        frame_tab_layout_left.addWidget(self.json_scroll_area)
+
+        frame_tab_layout_right.addWidget(save_frame_button)
+        frame_tab_layout_right.addWidget(create_frame_button)
+        frame_tab_layout_right.addWidget(duplicate_frame_button)
+        frame_tab_layout_right.addWidget(delete_current_frame)
+
+        frame_tab_layout.addLayout(frame_tab_layout_left)
+        frame_tab_layout.addLayout(frame_tab_layout_right)
+        frame_tab.setLayout(frame_tab_layout)
+
+        color_tab_layout = QHBoxLayout()
+        column1_layout = QVBoxLayout()
+        column2_layout = QVBoxLayout()
+        column1_layout.addLayout(red_layout)
+        column1_layout.addLayout(green_layout)
+        column1_layout.addLayout(blue_layout)
+        column1_layout.addLayout(alpha_layout)
+        column1_layout.addLayout(hex_layout)
+        column1_layout.addWidget(color_button)
+        column2_layout.addLayout(duration_layout)
+        color_tab_layout.addLayout(column1_layout)
+        color_tab_layout.addLayout(column2_layout)
+        color_tab.setLayout(color_tab_layout)
+
+        preset_tab_layout = QVBoxLayout()
+        preset_tab_layout.addWidget(plaid_button)
+        preset_tab_layout.addWidget(twinkle_button)
+        preset_tab_layout.addWidget(wave_button)
+        preset_tab_layout.addLayout(primary_hex_layout)
+        preset_tab_layout.addLayout(secondary_hex_layout)
+        preset_tab_layout.addLayout(third_hex_layout)
+        preset_tab.setLayout(preset_tab_layout)
 
         mode_tab_layout = QVBoxLayout()
         mode_tab_layout.addWidget(single_button)
@@ -488,7 +513,7 @@ class MainWindow(QMainWindow):
             a = int(hex_text[6:8], 16) 
             self.secondary_color = QColor(r, g, b, a)
             
-            
+    
     def thirdary(self):
         hex_text = self.third_hex_textBox.text()
         if len(hex_text) == 8:
@@ -524,22 +549,6 @@ class MainWindow(QMainWindow):
         self.scene.mode = "single"
     
     
-    #will randomly switch leds to one of three random colors 
-    def twinkle(self):
-        primary = getattr(self, "primary_color", QColor(255,0,0,255))
-        secondary = getattr(self, "secondary_color", QColor(0,0,255,255))
-        thirdary = getattr(self, "third_color", QColor(0,255,0,255))
-        for led in self.scene.leds:
-            if led.isSelected():
-                rand = random.randint(0, 2)
-                
-                if rand == 0:
-                    led.set_color(primary)
-                elif rand == 1:
-                    led.set_color(secondary)
-                else:
-                    led.set_color(thirdary)
-                    
     # used for finding degree for wave to go around
     def circleLine(self, radian):
         xend = 10000 * math.cos(radian)
@@ -549,14 +558,10 @@ class MainWindow(QMainWindow):
         line = QLineF(start,end)
         return line
         
-        
-    
     def wave(self):
         primary = getattr(self, "primary_color", QColor(255,0,0,255))
         leds = self.scene.leds
         frames = 360 # add ability to customize frames would be nice
-        angle = 0
-        inWave = []
         for i in range(frames):
             radian = math.radians(i)
             line = self.scene.addLine((self.circleLine(radian)))
@@ -569,12 +574,11 @@ class MainWindow(QMainWindow):
             self.save_frame(i)
                     
             
-            
+    # distance calculator for ho wclose leds are too the line        
     def lineDist(self, line, led):
         px, py = led.scenePos().x(), led.scenePos().y()
         x1, y1 = line.line().x1(), line.line().y1()
         x2, y2 = line.line().x2(), line.line().y2()
-        
         
         ax = px - x1
         ay = py - y1
@@ -588,17 +592,26 @@ class MainWindow(QMainWindow):
             # line zero length
             print("you messed up")
             return math.hypot(px - x1, py - y1)
-
         t = max(0, min(1, dot / len_sq))
-
         cx = x1 + t * bx
         cy = y1 + t * by
-
         return math.hypot(px - cx, py - cy)
-  
-         
     
-
+    
+    def twinkle(self):
+        primary = getattr(self, "primary_color", QColor(255,0,0,255))
+        secondary = getattr(self, "secondary_color", QColor(0,0,255,255))
+        thirdary = getattr(self, "third_color", QColor(0,255,0,255))
+        for led in self.scene.leds:
+            if led.isSelected():
+                rand = random.randint(0, 2)
+                if rand == 0:
+                    led.set_color(primary)
+                elif rand == 1:
+                    led.set_color(secondary)
+                else:
+                    led.set_color(thirdary)
+    
     def plaid(self):
         leds = self.scene.leds
         index = 0
@@ -734,11 +747,145 @@ class MainWindow(QMainWindow):
             "groups": groups
         }
 
-        folder = "ShowBuilderTest"
-        filename = f"./stadium/Assets/Resources/{folder}/frame_{self.frameNumber}.json"
-        with open(filename, "w", encoding="utf-8") as f:
-            json.dump(frame_data, f, indent=2)
-            print(f"Saved frame_{self.frameNumber}.json to {filename}")
+        if presetCount == -1:
+            
+            self.frameNumber = (int(len(self.json_scroll_area.widget().children())) - 1) if self.current_frame_label.text() == f"Current Frame: temp" else self.frameNumber
+            self.current_frame_label.setText(f"Current Frame: {self.frameNumber}")
+
+            folder = str(self.show_dropdown.currentText())
+            filename = f"./stadium/Assets/Resources/{folder}/{self.frameNumber}.json"
+            with open(filename, "w", encoding="utf-8") as f:
+                json.dump(frame_data, f, indent=2)
+                print(f"Saved frame {self.frameNumber}.json to {filename}")
+        
+            self.update_json_scroll_area()
+        else:
+            folder = "waveTest"
+            filename = f"./stadium/Assets/Resources/{folder}/{presetCount}.json"
+            with open(filename, "w", encoding="utf-8") as f:
+                json.dump(frame_data, f, indent=2)
+                print(f"Saved frame_{self.frameNumber}.json to {filename}")
+
+        
+        
+
+    def load_frame(self, frame_number=None):
+        if frame_number == None:
+            frame_number = self.frameNumber
+        folder = str(self.show_dropdown.currentText())
+        filename = f"./stadium/Assets/Resources/{folder}/{frame_number}.json"
+        with open(filename, "r", encoding="utf-8") as f:
+            frame_data = json.load(f)
+            print(f"Loaded frame {frame_number}.json from {filename}")
+
+            if "duration" in frame_data:
+                self.duration_textBox.setText(str(frame_data["duration"]))
+            else:
+                self.duration_textBox.setText("1000")  # default value
+
+            # Apply the loaded frame data to the scene
+            for group in frame_data["groups"]:
+                color = QColor(
+                    int(group["color"]["r"] * 255),
+                    int(group["color"]["g"] * 255),
+                    int(group["color"]["b"] * 255),
+                    int(group["color"]["a"] * 255)
+                )
+                for led_index in group["LEDIndices"]:
+                    led = self.scene.leds[led_index]
+                    led.set_color(color)
+
+        self.frameNumber = int(frame_number)
+        self.current_frame_label.setText(f"Current Frame: {self.frameNumber}")
+
+    def update_show_dropdown(self):
+        self.show_dropdown.clear()
+        resources_dir = os.path.join(".", "stadium", "Assets", "Resources")
+        try:
+            for name in sorted(os.listdir(resources_dir)):
+                path = os.path.join(resources_dir, name)
+                if os.path.isdir(path):
+                    self.show_dropdown.addItem(name)
+        except FileNotFoundError:
+            pass
+
+    def update_json_scroll_area(self):
+        folder = str(self.show_dropdown.currentText())
+        json_dir = os.path.join(".", "stadium", "Assets", "Resources", folder)
+        if not os.path.exists(json_dir):
+            return
+
+        # Sort JSON files by the numeric index in their filename (e.g. "12.json" -> 12)
+        json_files_list = [f for f in os.listdir(json_dir) if f.endswith('.json')]
+        json_files_list.sort(key=lambda f: int(f.split('.')[0]))
+
+        # Clear previous layout
+        if self.json_scroll_area.widget():
+            self.json_scroll_area.widget().deleteLater()
+
+        content_widget = QWidget()
+        layout = QVBoxLayout(content_widget)
+
+        for json_file in json_files_list:
+            button = QPushButton(f"Frame {json_file.split('.')[0]}")
+            button.clicked.connect(lambda connected, f=json_file: self.load_frame(f.split('.')[0]))
+            layout.addWidget(button)
+
+        layout.addStretch()
+        self.json_scroll_area.setWidget(content_widget)
+        self.json_scroll_area.setWidgetResizable(True)
+
+    def create_new_frame(self):
+        self.current_frame_label.setText(f"Current Frame: temp")
+        for led in self.scene.leds:
+            led.set_color(QColor(0, 0, 0, 255))  # Reset to black
+
+    def duplicate_current_frame(self):
+        folder = str(self.show_dropdown.currentText())
+        source_filename = f"./stadium/Assets/Resources/{folder}/{self.frameNumber}.json"
+
+        # Shift existing frames to make space for the duplicate
+        self.update_frame_numbers(direction=True)
+
+        # Copy the current frame to the new frame
+        dest_filename = f"./stadium/Assets/Resources/{folder}/{self.frameNumber + 1}.json"
+        with open(source_filename, "r", encoding="utf-8") as src_file, open(dest_filename, "w", encoding="utf-8") as dst_file:
+            dst_file.write(src_file.read())
+
+        self.update_json_scroll_area()
+
+    def delete_current_frame(self):
+        if self.current_frame_label.text() == f"Current Frame: temp":
+            print("Cannot delete unsaved frame.")
+            return
+        
+        # Delete the current frame file
+        folder = str(self.show_dropdown.currentText())
+        filename = f"./stadium/Assets/Resources/{folder}/{self.frameNumber}.json"
+        if os.path.exists(filename):
+            os.remove(filename)
+            print(f"Deleted frame {self.frameNumber}.json from {filename}")
+
+        self.update_frame_numbers(direction=False)
+
+        self.load_frame(self.frameNumber - 1 if self.frameNumber > 0 else 0)
+    
+    # Renames frames after insertion or deletion to maintain sequence
+    # direction: True = insert, False = delete
+    def update_frame_numbers(self, direction:bool):
+        folder = str(self.show_dropdown.currentText())
+        fileList = os.listdir(f"./stadium/Assets/Resources/{folder}")
+        fileList.sort(key=lambda f: int(f.split('.')[0]))
+
+        for file in (fileList[self.frameNumber:] if not direction else reversed(fileList[self.frameNumber + 1:])):
+            num = int(file.split('.')[0])
+            os.rename(
+                f"./stadium/Assets/Resources/{folder}/{file}",
+                f"./stadium/Assets/Resources/{folder}/{num + 1 if direction else num - 1}.json"
+            )
+            print(f"Renamed frame {num}.json to {num + 1 if direction else num - 1}.json")
+
+        self.update_json_scroll_area()
 
 
 if __name__ == "__main__":
