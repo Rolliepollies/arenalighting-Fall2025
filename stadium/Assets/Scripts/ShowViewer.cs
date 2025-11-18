@@ -17,7 +17,7 @@ public class ShowViewer : MonoBehaviour
     private float timeFrameDuration;
     private float timeDelta;
     private int currentFrame;
-    private string currentLoadedShow = "second_demo";
+    private string currentLoadedShow = "ShowBuilderTest";
 
 
     // Keeps track of the LEDs and groups
@@ -106,7 +106,7 @@ public class ShowViewer : MonoBehaviour
         
         foreach (GameObject LED in allLEDs)
         {
-            XZ += (Mathf.Floor(LED.transform.position.x * 1000f) / 1000f).ToString() + ", " + (Mathf.Floor(LED.transform.position.z * 1000f) / 1000f).ToString() + "\n";
+            XZ += (Mathf.Floor(-LED.transform.position.x * 1000f) / 1000f).ToString() + ", " + (Mathf.Floor(LED.transform.position.z * 1000f) / 1000f).ToString() + "\n";
         }
 
         foreach (int[] section in rowIndex)
@@ -116,7 +116,7 @@ public class ShowViewer : MonoBehaviour
                 rows += x + "\n";
             }
         }
-        File.WriteAllText("postions.txt", XZ);
+        File.WriteAllText("positions.txt", XZ);
         File.WriteAllText("rows.txt", rows);
         File.WriteAllText("sections.txt", sections);
     }
@@ -156,7 +156,7 @@ public class ShowViewer : MonoBehaviour
             if (jsonAsset != null)
             {
                 Debug.Log($"Loaded LED data from Resources/{resourcePath}.json");
-                timeFrameDuration = LoadDataFromFile(jsonAsset.text);
+                timeFrameDuration = LoadDataFromFile(jsonAsset.text) / 1000f; // Convert milliseconds to seconds
             }
             else
             {

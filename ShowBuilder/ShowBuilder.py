@@ -79,7 +79,6 @@ class LEDViewer(QGraphicsScene):
         item = self.itemAt(event.scenePos(), self.views()[0].transform())
         
         
-        print(self.mode)
         if isinstance(item, LEDItem):
             if self.mode == "single":
                 modifiers = QApplication.keyboardModifiers()
@@ -92,7 +91,6 @@ class LEDViewer(QGraphicsScene):
                         led.setSelected(False)
                     item.setSelected(True)
             elif self.mode == "section":
-                print("section")
                 sect = self.sections
                 # Find which section this LED belongs to
                 section_index = -1
@@ -102,7 +100,6 @@ class LEDViewer(QGraphicsScene):
                         section_index = index
                         break
                     index += 1
-                print(section_index)
                 if section_index >=0:
                     modifiers = QApplication.keyboardModifiers()
                     if not (modifiers & Qt.ControlModifier):
@@ -113,7 +110,6 @@ class LEDViewer(QGraphicsScene):
                         
 
             elif self.mode == "row":
-                print("row")
                 row = self.rows
             # Find which row this LED belongs to
             # You said rows.txt stores LED indices where rows end, so:
@@ -121,14 +117,12 @@ class LEDViewer(QGraphicsScene):
                 index = 0 
 
                 for i in row:
-                    print(i)
                     if i[0] <= item.index < i[1]:
                         rowIndex = index
                         break
 
                     index += 1
                     
-                print(rowIndex)
                 if rowIndex >= 0:
                     modifiers = QApplication.keyboardModifiers()
                     if not (modifiers & Qt.ControlModifier):
@@ -164,12 +158,12 @@ class LEDViewer(QGraphicsScene):
     def create_LEDs(self):
         self.leds = []
         index = 0
-        with open("showBuilder/postions.txt", 'r', encoding='utf-8') as f:
+        with open("showBuilder/positions.txt", 'r', encoding='utf-8') as f:
             for line in f:
                 line = line.split(',')
                 
                 x = float(line[0].strip())
-                z = float(line[1].strip()) # We will refer to this as y now on since it makes more sense in a 2d space
+                z = float(line[1].strip())
                 if index > 16862:
                     if index > 20800:
                         x = x -3
@@ -527,7 +521,6 @@ class MainWindow(QMainWindow):
         secondary = getattr(self, "secondary_color", QColor(0,0,255,255))
         
         for i in self.scene.sections:
-            print(i)
            
             if odd:
                 which = primary
@@ -539,7 +532,6 @@ class MainWindow(QMainWindow):
                 leds[index].set_color(which)
                 index += 1
             odd = not odd
-            print(odd)
                 
     def pick_image_file(self):
         path, _ = QFileDialog.getOpenFileName(
@@ -616,7 +608,6 @@ class MainWindow(QMainWindow):
         green = int(self.green_textBox.text())
         blue = int(self.blue_textBox.text())
         alpha = int(round(float(self.alpha_textBox.text()), 4) * 255)
-        print(red, green, blue, alpha)
         color = QColor(red, green, blue, alpha)
         for led in self.scene.leds:
             if led.isSelected():
@@ -652,6 +643,7 @@ class MainWindow(QMainWindow):
             color_map[rgb]["LEDIndices"].append(led.index)
 
         frame_data = {
+            "duration": int(self.duration_textBox.text()),
             "groups": groups
         }
 
