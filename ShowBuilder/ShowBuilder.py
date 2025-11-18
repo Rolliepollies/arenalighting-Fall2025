@@ -166,9 +166,9 @@ class LEDViewer(QGraphicsScene):
                 z = float(line[1].strip())
                 if index > 16862:
                     if index > 20800:
-                        x = x -3
+                        x += 1
                     else:
-                        x += 3
+                        x -= 1
                 led = LEDItem(x*40, z*40, index)
                 self.addItem(led)
                 self.leds.append(led)
