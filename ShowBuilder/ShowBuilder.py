@@ -141,6 +141,7 @@ class LEDViewer(QGraphicsScene):
     def sectionsRowsInit(self):
         self.sections = []
         self.rows = []
+        self.twinkle = []
         temp = -1
         with open("showBuilder/sections.txt", 'r', encoding='utf-8') as f:
             for line in f:
@@ -190,6 +191,9 @@ class LEDItem(QGraphicsEllipseItem):
     def set_color(self, color: QColor):
         self.brush.setColor(color)
         self.setBrush(self.brush)
+        
+ 
+            
 
 
 class MainWindow(QMainWindow):
@@ -308,7 +312,7 @@ class MainWindow(QMainWindow):
         # Primary hex box
         primary_hex_label = QLabel("Primary Hex: #")
         primary_hex_label.setFixedWidth(primary_hex_label.sizeHint().width())
-        self.primary_hex_textBox = QLineEdit("FF0000FF")  # default red
+        self.primary_hex_textBox = QLineEdit("000080F")  # default navy
         self.primary_hex_textBox.setFixedWidth(100)
         self.primary_hex_textBox.setValidator(QRegExpValidator(QRegExp("[0-9A-Fa-f]{8}")))
         self.primary_hex_textBox.textEdited.connect(self.primary)
@@ -321,7 +325,7 @@ class MainWindow(QMainWindow):
         # Secondary hex box
         secondary_hex_label = QLabel("Secondary Hex: #")
         secondary_hex_label.setFixedWidth(secondary_hex_label.sizeHint().width())
-        self.secondary_hex_textBox = QLineEdit("0000FFFF")  # default cyan
+        self.secondary_hex_textBox = QLineEdit("FFFFFFFF")  # default white
         self.secondary_hex_textBox.setFixedWidth(100)
         self.secondary_hex_textBox.setValidator(QRegExpValidator(QRegExp("[0-9A-Fa-f]{8}")))
         self.secondary_hex_textBox.textEdited.connect(self.secondary)
@@ -713,6 +717,7 @@ class MainWindow(QMainWindow):
             if led.isSelected():
                 led.set_color(color)
 
+    def save_frame(self, presetCount = -1):
     def save_frame(self, presetCount = -1):
         groups = []
         color_map = {}
