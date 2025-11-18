@@ -1,11 +1,14 @@
 import sys
 import json
+import random
+import math
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QGraphicsScene, QGraphicsView, QTabWidget, QHBoxLayout, QLineEdit,
     QGraphicsEllipseItem, QPushButton, QVBoxLayout, QWidget, QColorDialog, QSlider, QLabel
 )
-from PyQt5.QtCore import Qt, QTimer, QRegExp
+from PyQt5.QtCore import Qt, QTimer, QRegExp, QPointF, QLineF, QRectF
 from PyQt5.QtGui import QColor, QBrush, QPainter, QIntValidator, QDoubleValidator, QRegExpValidator
+
 
 
 class CustomGraphicsView(QGraphicsView):
@@ -78,7 +81,6 @@ class LEDViewer(QGraphicsScene):
         item = self.itemAt(event.scenePos(), self.views()[0].transform())
         
         
-        print(self.mode)
         if isinstance(item, LEDItem):
             if self.mode == "single":
                 modifiers = QApplication.keyboardModifiers()
@@ -144,6 +146,7 @@ class LEDViewer(QGraphicsScene):
     def sectionsRowsInit(self):
         self.sections = []
         self.rows = []
+        self.twinkle = []
         temp = -1
         with open("showBuilder/sections.txt", 'r', encoding='utf-8') as f:
             for line in f:
@@ -193,6 +196,9 @@ class LEDItem(QGraphicsEllipseItem):
     def set_color(self, color: QColor):
         self.brush.setColor(color)
         self.setBrush(self.brush)
+        
+ 
+            
 
 
 class MainWindow(QMainWindow):
@@ -270,14 +276,20 @@ class MainWindow(QMainWindow):
         color_tab.setLayout(color_tab_layout)
         
         
-        preset_button = QPushButton("plaid")
-        preset_button.clicked.connect(self.plaid)
-        preset_button.setFixedWidth(100)
+        plaid_button = QPushButton("plaid")
+        plaid_button.clicked.connect(self.plaid)
+        plaid_button.setFixedWidth(100)
+        twinkle_button = QPushButton("Twinkle")
+        twinkle_button.clicked.connect(self.twinkle)
+        twinkle_button.setFixedWidth(100)
+        wave_button = QPushButton("wave")
+        wave_button.clicked.connect(self.wave)
+        wave_button.setFixedWidth(100)
 
         # Primary hex box
         primary_hex_label = QLabel("Primary Hex: #")
         primary_hex_label.setFixedWidth(primary_hex_label.sizeHint().width())
-        self.primary_hex_textBox = QLineEdit("FF0000FF")  # default red
+        self.primary_hex_textBox = QLineEdit("000080F")  # default navy
         self.primary_hex_textBox.setFixedWidth(100)
         self.primary_hex_textBox.setValidator(QRegExpValidator(QRegExp("[0-9A-Fa-f]{8}")))
         self.primary_hex_textBox.textEdited.connect(self.primary)
@@ -290,7 +302,7 @@ class MainWindow(QMainWindow):
         # Secondary hex box
         secondary_hex_label = QLabel("Secondary Hex: #")
         secondary_hex_label.setFixedWidth(secondary_hex_label.sizeHint().width())
-        self.secondary_hex_textBox = QLineEdit("0000FFFF")  # default cyan
+        self.secondary_hex_textBox = QLineEdit("FFFFFFFF")  # default white
         self.secondary_hex_textBox.setFixedWidth(100)
         self.secondary_hex_textBox.setValidator(QRegExpValidator(QRegExp("[0-9A-Fa-f]{8}")))
         self.secondary_hex_textBox.textEdited.connect(self.secondary)
@@ -299,25 +311,43 @@ class MainWindow(QMainWindow):
         secondary_hex_layout.setAlignment(Qt.AlignLeft)
         secondary_hex_layout.addWidget(secondary_hex_label)
         secondary_hex_layout.addWidget(self.secondary_hex_textBox)
+        
+        third_hex_label = QLabel("Thirdary Hex: #")
+        third_hex_label.setFixedWidth(third_hex_label.sizeHint().width())
+        self.third_hex_textBox = QLineEdit("FF8C00F")  # default orange
+        self.third_hex_textBox.setFixedWidth(100)
+        self.third_hex_textBox.setValidator(QRegExpValidator(QRegExp("[0-9A-Fa-f]{8}")))
+        self.third_hex_textBox.textEdited.connect(self.thirdary)
+
+        third_hex_layout = QHBoxLayout()
+        third_hex_layout.setAlignment(Qt.AlignLeft)
+        third_hex_layout.addWidget(third_hex_label)
+        third_hex_layout.addWidget(self.third_hex_textBox)
 
         # Layout
         preset_layout = QVBoxLayout()
-        preset_layout.addWidget(preset_button)
+        preset_layout.addWidget(plaid_button)
+        preset_layout.addWidget(twinkle_button)
+        preset_layout.addWidget(wave_button)
         preset_layout.addLayout(primary_hex_layout)
         preset_layout.addLayout(secondary_hex_layout)
+        preset_layout.addLayout(third_hex_layout)
         preset_tab.setLayout(preset_layout)
 
        
-
+        # mode selection buttons
         single_button = QPushButton("single")
         single_button.clicked.connect(self.single)
         single_button.setFixedWidth(color_button.sizeHint().width())
+        
         row_button = QPushButton("row")
         row_button.clicked.connect(self.row)
         row_button.setFixedWidth(color_button.sizeHint().width())
+        
         section_button = QPushButton("section")
         section_button.clicked.connect(self.section)
         section_button.setFixedWidth(color_button.sizeHint().width())
+        
         mode_layout = QVBoxLayout()
         mode_layout.addWidget(single_button)
         mode_layout.addWidget(row_button)
@@ -388,6 +418,15 @@ class MainWindow(QMainWindow):
             a = int(hex_text[6:8], 16) 
             self.secondary_color = QColor(r, g, b, a)
             
+            
+    def thirdary(self):
+        hex_text = self.third_hex_textBox.text()
+        if len(hex_text) == 8:
+            r = int(hex_text[0:2], 16)
+            g = int(hex_text[2:4], 16)
+            b = int(hex_text[4:6], 16)
+            a = int(hex_text[6:8], 16) 
+            self.third_color = QColor(r, g, b, a)
     
     def update_rgba_values(self):
         hex_text = self.hex_textBox.text()
@@ -414,6 +453,82 @@ class MainWindow(QMainWindow):
     def single(self):
         self.scene.mode = "single"
     
+    
+    #will randomly switch leds to one of three random colors 
+    def twinkle(self):
+        primary = getattr(self, "primary_color", QColor(255,0,0,255))
+        secondary = getattr(self, "secondary_color", QColor(0,0,255,255))
+        thirdary = getattr(self, "third_color", QColor(0,255,0,255))
+        for led in self.scene.leds:
+            if led.isSelected():
+                rand = random.randint(0, 2)
+                
+                if rand == 0:
+                    led.set_color(primary)
+                elif rand == 1:
+                    led.set_color(secondary)
+                else:
+                    led.set_color(thirdary)
+                    
+    # used for finding degree for wave to go around
+    def circleLine(self, radian):
+        xend = 10000 * math.cos(radian)
+        yend = 10000 * math.sin(radian)
+        start = QPointF(0,0)
+        end = QPointF(xend,yend)
+        line = QLineF(start,end)
+        return line
+        
+        
+    
+    def wave(self):
+        primary = getattr(self, "primary_color", QColor(255,0,0,255))
+        leds = self.scene.leds
+        frames = 360 # add ability to customize frames would be nice
+        angle = 0
+        inWave = []
+        for i in range(frames):
+            radian = math.radians(i)
+            line = self.scene.addLine((self.circleLine(radian)))
+            
+            for x in leds:
+                if self.lineDist(line, x) < 100:
+                    x.set_color(primary)
+                else:
+                    x.set_color(QColor(0,0,0,0))
+            self.save_frame(i)
+                    
+            
+            
+    def lineDist(self, line, led):
+        px, py = led.scenePos().x(), led.scenePos().y()
+        x1, y1 = line.line().x1(), line.line().y1()
+        x2, y2 = line.line().x2(), line.line().y2()
+        
+        
+        ax = px - x1
+        ay = py - y1
+        bx = x2 - x1
+        by = y2 - y1
+        
+        dot = ax * bx + ay * by
+        len_sq = bx * bx + by * by
+        
+        if len_sq == 0:
+            # line zero length
+            print("you messed up")
+            return math.hypot(px - x1, py - y1)
+
+        t = max(0, min(1, dot / len_sq))
+
+        cx = x1 + t * bx
+        cy = y1 + t * by
+
+        return math.hypot(px - cx, py - cy)
+  
+         
+    
+
     def plaid(self):
         leds = self.scene.leds
         index = 0
@@ -450,7 +565,7 @@ class MainWindow(QMainWindow):
             if led.isSelected():
                 led.set_color(color)
 
-    def save_frame(self):
+    def save_frame(self, presetCount = -1):
         groups = []
         color_map = {}
         group_id = 1
@@ -483,11 +598,19 @@ class MainWindow(QMainWindow):
             "groups": groups
         }
 
-        folder = "ShowBuilderTest"
-        filename = f"./stadium/Assets/Resources/{folder}/frame_{self.frameNumber}.json"
-        with open(filename, "w", encoding="utf-8") as f:
-            json.dump(frame_data, f, indent=2)
-            print(f"Saved frame_{self.frameNumber}.json to {filename}")
+        if presetCount == -1:
+            
+            folder = "ShowBuilderTest"
+            filename = f"./stadium/Assets/Resources/{folder}/frame_{self.frameNumber}.json"
+            with open(filename, "w", encoding="utf-8") as f:
+                json.dump(frame_data, f, indent=2)
+                print(f"Saved frame_{self.frameNumber}.json to {filename}")
+        else:
+            folder = "waveTest"
+            filename = f"./stadium/Assets/Resources/{folder}/frame_{presetCount}.json"
+            with open(filename, "w", encoding="utf-8") as f:
+                json.dump(frame_data, f, indent=2)
+                print(f"Saved frame_{self.frameNumber}.json to {filename}")
 
 
 if __name__ == "__main__":
