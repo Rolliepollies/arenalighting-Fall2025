@@ -1,11 +1,13 @@
 import os
 import sys
 import json
+import math
+import random
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QGraphicsScene, QGraphicsView, QTabWidget, QComboBox, QHBoxLayout, QLineEdit,
     QGraphicsEllipseItem, QPushButton, QVBoxLayout, QWidget, QColorDialog, QSlider, QLabel, QScrollArea, QGridLayout, QCheckBox, QFileDialog, QMessageBox
 )
-from PyQt5.QtCore import Qt, QTimer, QRegExp
+from PyQt5.QtCore import Qt, QTimer, QRegExp, QPointF, QLineF, QRectF
 from PyQt5.QtGui import QColor, QBrush, QPainter, QIntValidator, QDoubleValidator, QRegExpValidator, QImage, QPixmap
 from PIL import Image
 
@@ -139,6 +141,7 @@ class LEDViewer(QGraphicsScene):
     def sectionsRowsInit(self):
         self.sections = []
         self.rows = []
+        self.twinkle = []
         temp = -1
         with open("showBuilder/sections.txt", 'r', encoding='utf-8') as f:
             for line in f:
@@ -188,6 +191,9 @@ class LEDItem(QGraphicsEllipseItem):
     def set_color(self, color: QColor):
         self.brush.setColor(color)
         self.setBrush(self.brush)
+        
+ 
+            
 
 
 class MainWindow(QMainWindow):
@@ -272,9 +278,17 @@ class MainWindow(QMainWindow):
         section_button.clicked.connect(self.section)
         section_button.setFixedWidth(color_button.sizeHint().width())
 
-        preset_button = QPushButton("plaid")
-        preset_button.clicked.connect(self.plaid)
-        preset_button.setFixedWidth(100)
+        plaid_button = QPushButton("plaid")
+        plaid_button.clicked.connect(self.plaid)
+        plaid_button.setFixedWidth(100)
+        
+        twinkle_button = QPushButton("Twinkle")
+        twinkle_button.clicked.connect(self.twinkle)
+        twinkle_button.setFixedWidth(100)
+        
+        wave_button = QPushButton("wave")
+        wave_button.clicked.connect(self.wave)
+        wave_button.setFixedWidth(100)
 
         # Color selection widgets
         self.red_textBox, red_layout = self.create_rgb_slider("R")
@@ -298,7 +312,7 @@ class MainWindow(QMainWindow):
         # Primary hex box
         primary_hex_label = QLabel("Primary Hex: #")
         primary_hex_label.setFixedWidth(primary_hex_label.sizeHint().width())
-        self.primary_hex_textBox = QLineEdit("FF0000FF")  # default red
+        self.primary_hex_textBox = QLineEdit("000080F")  # default navy
         self.primary_hex_textBox.setFixedWidth(100)
         self.primary_hex_textBox.setValidator(QRegExpValidator(QRegExp("[0-9A-Fa-f]{8}")))
         self.primary_hex_textBox.textEdited.connect(self.primary)
@@ -311,7 +325,7 @@ class MainWindow(QMainWindow):
         # Secondary hex box
         secondary_hex_label = QLabel("Secondary Hex: #")
         secondary_hex_label.setFixedWidth(secondary_hex_label.sizeHint().width())
-        self.secondary_hex_textBox = QLineEdit("0000FFFF")  # default cyan
+        self.secondary_hex_textBox = QLineEdit("FFFFFFFF")  # default white
         self.secondary_hex_textBox.setFixedWidth(100)
         self.secondary_hex_textBox.setValidator(QRegExpValidator(QRegExp("[0-9A-Fa-f]{8}")))
         self.secondary_hex_textBox.textEdited.connect(self.secondary)
@@ -320,6 +334,20 @@ class MainWindow(QMainWindow):
         secondary_hex_layout.setAlignment(Qt.AlignLeft)
         secondary_hex_layout.addWidget(secondary_hex_label)
         secondary_hex_layout.addWidget(self.secondary_hex_textBox)
+        
+        # Third hex box
+        
+        third_hex_label = QLabel("Thirdary Hex: #")
+        third_hex_label.setFixedWidth(third_hex_label.sizeHint().width())
+        self.third_hex_textBox = QLineEdit("FF8C00F")  # default orange
+        self.third_hex_textBox.setFixedWidth(100)
+        self.third_hex_textBox.setValidator(QRegExpValidator(QRegExp("[0-9A-Fa-f]{8}")))
+        self.third_hex_textBox.textEdited.connect(self.thirdary)
+
+        third_hex_layout = QHBoxLayout()
+        third_hex_layout.setAlignment(Qt.AlignLeft)
+        third_hex_layout.addWidget(third_hex_label)
+        third_hex_layout.addWidget(self.third_hex_textBox)
 
         # Duration text box
         duration_label = QLabel("Duration (ms):")
@@ -376,9 +404,12 @@ class MainWindow(QMainWindow):
         color_tab.setLayout(color_tab_layout)
 
         preset_tab_layout = QVBoxLayout()
-        preset_tab_layout.addWidget(preset_button)
+        preset_tab_layout.addWidget(plaid_button)
+        preset_tab_layout.addWidget(twinkle_button)
+        preset_tab_layout.addWidget(wave_button)
         preset_tab_layout.addLayout(primary_hex_layout)
         preset_tab_layout.addLayout(secondary_hex_layout)
+        preset_tab_layout.addLayout(third_hex_layout)
         preset_tab.setLayout(preset_tab_layout)
 
         mode_tab_layout = QVBoxLayout()
@@ -487,6 +518,15 @@ class MainWindow(QMainWindow):
             self.secondary_color = QColor(r, g, b, a)
             
     
+    def thirdary(self):
+        hex_text = self.third_hex_textBox.text()
+        if len(hex_text) == 8:
+            r = int(hex_text[0:2], 16)
+            g = int(hex_text[2:4], 16)
+            b = int(hex_text[4:6], 16)
+            a = int(hex_text[6:8], 16) 
+            self.third_color = QColor(r, g, b, a)
+    
     def update_rgba_values(self):
         hex_text = self.hex_textBox.text()
         if len(hex_text) == 8:
@@ -511,6 +551,70 @@ class MainWindow(QMainWindow):
         
     def single(self):
         self.scene.mode = "single"
+    
+    
+    # used for finding degree for wave to go around
+    def circleLine(self, radian):
+        xend = 10000 * math.cos(radian)
+        yend = 10000 * math.sin(radian)
+        start = QPointF(0,0)
+        end = QPointF(xend,yend)
+        line = QLineF(start,end)
+        return line
+        
+    def wave(self):
+        primary = getattr(self, "primary_color", QColor(255,0,0,255))
+        leds = self.scene.leds
+        frames = 360 # add ability to customize frames would be nice
+        for i in range(frames):
+            radian = math.radians(i)
+            line = self.scene.addLine((self.circleLine(radian)))
+            
+            for x in leds:
+                if self.lineDist(line, x) < 100:
+                    x.set_color(primary)
+                else:
+                    x.set_color(QColor(0,0,0,0))
+            self.save_frame(i)
+                    
+            
+    # distance calculator for ho wclose leds are too the line        
+    def lineDist(self, line, led):
+        px, py = led.scenePos().x(), led.scenePos().y()
+        x1, y1 = line.line().x1(), line.line().y1()
+        x2, y2 = line.line().x2(), line.line().y2()
+        
+        ax = px - x1
+        ay = py - y1
+        bx = x2 - x1
+        by = y2 - y1
+        
+        dot = ax * bx + ay * by
+        len_sq = bx * bx + by * by
+        
+        if len_sq == 0:
+            # line zero length
+            print("you messed up")
+            return math.hypot(px - x1, py - y1)
+        t = max(0, min(1, dot / len_sq))
+        cx = x1 + t * bx
+        cy = y1 + t * by
+        return math.hypot(px - cx, py - cy)
+    
+    
+    def twinkle(self):
+        primary = getattr(self, "primary_color", QColor(255,0,0,255))
+        secondary = getattr(self, "secondary_color", QColor(0,0,255,255))
+        thirdary = getattr(self, "third_color", QColor(0,255,0,255))
+        for led in self.scene.leds:
+            if led.isSelected():
+                rand = random.randint(0, 2)
+                if rand == 0:
+                    led.set_color(primary)
+                elif rand == 1:
+                    led.set_color(secondary)
+                else:
+                    led.set_color(thirdary)
     
     def plaid(self):
         leds = self.scene.leds
@@ -613,7 +717,7 @@ class MainWindow(QMainWindow):
             if led.isSelected():
                 led.set_color(color)
 
-    def save_frame(self):
+    def save_frame(self, presetCount = -1):
         groups = []
         color_map = {}
         group_id = 1
@@ -647,16 +751,27 @@ class MainWindow(QMainWindow):
             "groups": groups
         }
 
-        self.frameNumber = (int(len(self.json_scroll_area.widget().children())) - 1) if self.current_frame_label.text() == f"Current Frame: temp" else self.frameNumber
-        self.current_frame_label.setText(f"Current Frame: {self.frameNumber}")
+        if presetCount == -1:
+            
+            self.frameNumber = (int(len(self.json_scroll_area.widget().children())) - 1) if self.current_frame_label.text() == f"Current Frame: temp" else self.frameNumber
+            self.current_frame_label.setText(f"Current Frame: {self.frameNumber}")
 
-        folder = str(self.show_dropdown.currentText())
-        filename = f"./stadium/Assets/Resources/{folder}/{self.frameNumber}.json"
-        with open(filename, "w", encoding="utf-8") as f:
-            json.dump(frame_data, f, indent=2)
-            print(f"Saved frame {self.frameNumber}.json to {filename}")
+            folder = str(self.show_dropdown.currentText())
+            filename = f"./stadium/Assets/Resources/{folder}/{self.frameNumber}.json"
+            with open(filename, "w", encoding="utf-8") as f:
+                json.dump(frame_data, f, indent=2)
+                print(f"Saved frame {self.frameNumber}.json to {filename}")
         
-        self.update_json_scroll_area()
+            self.update_json_scroll_area()
+        else:
+            folder = "waveTest"
+            filename = f"./stadium/Assets/Resources/{folder}/{presetCount}.json"
+            with open(filename, "w", encoding="utf-8") as f:
+                json.dump(frame_data, f, indent=2)
+                print(f"Saved frame_{self.frameNumber}.json to {filename}")
+
+        
+        
 
     def load_frame(self, frame_number=None):
         if frame_number == None:
