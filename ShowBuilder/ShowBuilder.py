@@ -718,7 +718,6 @@ class MainWindow(QMainWindow):
                 led.set_color(color)
 
     def save_frame(self, presetCount = -1):
-    def save_frame(self, presetCount = -1):
         groups = []
         color_map = {}
         group_id = 1
