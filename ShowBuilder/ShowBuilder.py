@@ -761,7 +761,7 @@ class MainWindow(QMainWindow):
     
     # Renames frames after insertion or deletion to maintain sequence
     # direction: True = insert, False = delete
-    def update_frame_numbers(self, direction:bool):
+    def update_frame_numbers(self, direction:bool=True):
         folder = str(self.show_dropdown.currentText())
         fileList = os.listdir(f"./stadium/Assets/Resources/{folder}")
         fileList.sort(key=lambda f: int(f.split('.')[0]))
