@@ -266,15 +266,21 @@ class MainWindow(QMainWindow):
         color_button.setFixedWidth(150)
         color_button.setFixedHeight(20)
 
-        # Dropdowns
-        self.show_dropdown = QComboBox()
-        self.show_dropdown.setFixedWidth(150)
-        self.show_dropdown.setFixedHeight(20)
-        self.show_dropdown.currentIndexChanged.connect(self.update_json_scroll_area)
-        self.show_dropdown.currentIndexChanged.connect(lambda: self.load_frame(0))
-        
-        self.update_json_scroll_area()
-        self.update_show_dropdown()
+        single_button = QPushButton("single")
+        single_button.clicked.connect(self.single)
+        single_button.setFixedWidth(color_button.sizeHint().width())
+
+        row_button = QPushButton("row")
+        row_button.clicked.connect(self.row)
+        row_button.setFixedWidth(color_button.sizeHint().width())
+
+        section_button = QPushButton("section")
+        section_button.clicked.connect(self.section)
+        section_button.setFixedWidth(color_button.sizeHint().width())
+
+        preset_button = QPushButton("plaid")
+        preset_button.clicked.connect(self.plaid)
+        preset_button.setFixedWidth(100)
 
         # Color selection widgets
         self.red_textBox, red_layout = self.create_rgb_slider("R")
@@ -294,38 +300,6 @@ class MainWindow(QMainWindow):
         hex_layout.setAlignment(Qt.AlignLeft)
         hex_layout.addWidget(hex_label)
         hex_layout.addWidget(self.hex_textBox)
-
-        # Layouts
-        frame_tab_layout = QHBoxLayout()
-        frame_tab_layout_left = QVBoxLayout()
-        frame_tab_layout_right = QVBoxLayout()
-
-        frame_tab_layout_left.addWidget(self.current_frame_label)
-        frame_tab_layout_left.addWidget(self.show_dropdown)
-        frame_tab_layout_left.addWidget(self.json_scroll_area)
-
-        frame_tab_layout_right.addWidget(save_frame_button)
-        frame_tab_layout_right.addWidget(create_frame_button)
-        frame_tab_layout_right.addWidget(duplicate_frame_button)
-        frame_tab_layout_right.addWidget(delete_current_frame)
-
-        frame_tab_layout.addLayout(frame_tab_layout_left)
-        frame_tab_layout.addLayout(frame_tab_layout_right)
-        frame_tab.setLayout(frame_tab_layout)
-
-        color_tab_layout = QVBoxLayout()
-        color_tab_layout.addLayout(red_layout)
-        color_tab_layout.addLayout(green_layout)
-        color_tab_layout.addLayout(blue_layout)
-        color_tab_layout.addLayout(alpha_layout)
-        color_tab_layout.addLayout(hex_layout)
-        color_tab_layout.addWidget(color_button)
-        color_tab.setLayout(color_tab_layout)
-        
-        
-        preset_button = QPushButton("plaid")
-        preset_button.clicked.connect(self.plaid)
-        preset_button.setFixedWidth(100)
 
         # Primary hex box
         primary_hex_label = QLabel("Primary Hex: #")
@@ -353,38 +327,79 @@ class MainWindow(QMainWindow):
         secondary_hex_layout.addWidget(secondary_hex_label)
         secondary_hex_layout.addWidget(self.secondary_hex_textBox)
 
-        # Layout
-        preset_layout = QVBoxLayout()
-        preset_layout.addWidget(preset_button)
-        preset_layout.addLayout(primary_hex_layout)
-        preset_layout.addLayout(secondary_hex_layout)
-        preset_tab.setLayout(preset_layout)
+        # Duration text box
+        duration_label = QLabel("Duration (ms):")
+        duration_label.setFixedWidth(duration_label.sizeHint().width())
+        self.duration_textBox = QLineEdit("1000")  # default 1000 ms
+        self.duration_textBox.setFixedWidth(100)
+        self.duration_textBox.setValidator(QIntValidator(0, 100000))  # Allow durations from 0 to 100000 ms
 
-       
+        duration_layout = QHBoxLayout()
+        duration_layout.setAlignment(Qt.AlignLeft)
+        duration_layout.addWidget(duration_label)
+        duration_layout.addWidget(self.duration_textBox)
 
-        single_button = QPushButton("single")
-        single_button.clicked.connect(self.single)
-        single_button.setFixedWidth(color_button.sizeHint().width())
-        row_button = QPushButton("row")
-        row_button.clicked.connect(self.row)
-        row_button.setFixedWidth(color_button.sizeHint().width())
-        section_button = QPushButton("section")
-        section_button.clicked.connect(self.section)
-        section_button.setFixedWidth(color_button.sizeHint().width())
-        mode_layout = QVBoxLayout()
-        mode_layout.addWidget(single_button)
-        mode_layout.addWidget(row_button)
-        mode_layout.addWidget(section_button)
-        mode_tab.setLayout(mode_layout)
+        # Dropdowns
+        self.show_dropdown = QComboBox()
+        self.show_dropdown.setFixedWidth(150)
+        self.show_dropdown.setFixedHeight(20)
+        self.show_dropdown.currentIndexChanged.connect(self.update_json_scroll_area)
+        self.show_dropdown.currentIndexChanged.connect(lambda: self.load_frame(0))
 
-        container_layout = QVBoxLayout()
-        container_layout.addWidget(self.view)
-        container_layout.addWidget(tabs)
+        self.update_json_scroll_area()
+        self.update_show_dropdown()
+
+        # Layouts
+        frame_tab_layout = QHBoxLayout()
+        frame_tab_layout_left = QVBoxLayout()
+        frame_tab_layout_right = QVBoxLayout()
+
+        frame_tab_layout_left.addWidget(self.current_frame_label)
+        frame_tab_layout_left.addWidget(self.show_dropdown)
+        frame_tab_layout_left.addWidget(self.json_scroll_area)
+
+        frame_tab_layout_right.addWidget(save_frame_button)
+        frame_tab_layout_right.addWidget(create_frame_button)
+        frame_tab_layout_right.addWidget(duplicate_frame_button)
+        frame_tab_layout_right.addWidget(delete_current_frame)
+
+        frame_tab_layout.addLayout(frame_tab_layout_left)
+        frame_tab_layout.addLayout(frame_tab_layout_right)
+        frame_tab.setLayout(frame_tab_layout)
+
+        color_tab_layout = QHBoxLayout()
+        column1_layout = QVBoxLayout()
+        column2_layout = QVBoxLayout()
+        column1_layout.addLayout(red_layout)
+        column1_layout.addLayout(green_layout)
+        column1_layout.addLayout(blue_layout)
+        column1_layout.addLayout(alpha_layout)
+        column1_layout.addLayout(hex_layout)
+        column1_layout.addWidget(color_button)
+        column2_layout.addLayout(duration_layout)
+        color_tab_layout.addLayout(column1_layout)
+        color_tab_layout.addLayout(column2_layout)
+        color_tab.setLayout(color_tab_layout)
+
+        preset_tab_layout = QVBoxLayout()
+        preset_tab_layout.addWidget(preset_button)
+        preset_tab_layout.addLayout(primary_hex_layout)
+        preset_tab_layout.addLayout(secondary_hex_layout)
+        preset_tab.setLayout(preset_tab_layout)
+
+        mode_tab_layout = QVBoxLayout()
+        mode_tab_layout.addWidget(single_button)
+        mode_tab_layout.addWidget(row_button)
+        mode_tab_layout.addWidget(section_button)
+        mode_tab.setLayout(mode_tab_layout)
 
         # Main container (central widget)
-        container = QWidget()
-        container.setLayout(container_layout)
-        self.setCentralWidget(container)
+        main_container_layout = QVBoxLayout()
+        main_container_layout.addWidget(self.view)
+        main_container_layout.addWidget(tabs)
+        main_container = QWidget()
+        main_container.setLayout(main_container_layout)
+        self.setCentralWidget(main_container)
 
     def create_image_tab(self):
         layout = QVBoxLayout()
@@ -660,6 +675,11 @@ class MainWindow(QMainWindow):
             frame_data = json.load(f)
             print(f"Loaded frame {frame_number}.json from {filename}")
 
+            if "duration" in frame_data:
+                self.duration_textBox.setText(str(frame_data["duration"]))
+            else:
+                self.duration_textBox.setText("1000")  # default value
+
             # Apply the loaded frame data to the scene
             for group in frame_data["groups"]:
                 color = QColor(
@@ -705,7 +725,7 @@ class MainWindow(QMainWindow):
 
         for json_file in json_files_list:
             button = QPushButton(f"Frame {json_file.split('.')[0]}")
-            button.clicked.connect(lambda checked, f=json_file: self.load_frame(f.split('.')[0]))
+            button.clicked.connect(lambda connected, f=json_file: self.load_frame(f.split('.')[0]))
             layout.addWidget(button)
 
         layout.addStretch()
