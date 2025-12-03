@@ -26,26 +26,12 @@ public class MenuBarsController : MonoBehaviour
     // It would be much better to 
     void Update()
     {
-        if (colorPanel.activeSelf)
-        {
-            colorButton.GetComponent<Image>().color = activeColor;
-        }
-        else {
-            colorButton.GetComponent<Image>().color = inactiveColor;
-        }
-
-        if (musicPanel.activeSelf)
-        {
-            musicButton.GetComponent<Image>().color = activeColor;
-        }
-        else {
-            musicButton.GetComponent<Image>().color = inactiveColor;
-        }
+        colorButton.image.color = colorPanel.activeSelf ? activeColor : inactiveColor;
+        musicButton.image.color = musicPanel.activeSelf ? activeColor : inactiveColor;
 
         if (Input.GetKeyDown(KeyCode.U))
-        {
             canvas.SetActive(!canvas.activeSelf);
-        }
+            
     }
 
     void OpenColorMenu()

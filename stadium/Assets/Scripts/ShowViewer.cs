@@ -12,11 +12,12 @@ public class ShowViewer : MonoBehaviour
     public AnimationCurve BrightnessCurve;
 
     // Keeps track of the current simulation time
-    public float timeOffset;
-    private float nextStepTime = 0f;
-    private int lastLoadedStep = -1;
     private bool isLightShowPlaying = false;
-    public float animationSpeedFactor = 2.3f; // This value was chosen to sync with the given song, but it's probably on the slow side for the final product
+    private float timeFrameStart;
+    private float timeFrameDuration;
+    private float timeDelta;
+    private int currentFrame;
+    private string currentLoadedShow = "ShowBuilderTest";
 
 
     // Keeps track of the LEDs and groups
@@ -52,6 +53,7 @@ public class ShowViewer : MonoBehaviour
     [System.Serializable]
     public class LEDSaveData
     {
+        public float duration;
         public List<LEDGroupData> groups = new List<LEDGroupData>();
     }
 
@@ -59,9 +61,6 @@ public class ShowViewer : MonoBehaviour
     // Start() is called before the first frame update
     void Start()
     {
-        timeOffset = 0f;
-
-        // want to make the group ids the hexcode of the color of the group so that this list can be destroyed and recreated dynamically
 
         // Find all sections and sort them by section number
         GameObject[] sectionList = GameObject.FindGameObjectsWithTag("Section");
@@ -98,7 +97,28 @@ public class ShowViewer : MonoBehaviour
             }
         }
 
+        // save LED info for show builder
         allLEDs = tempLEDList.ToArray();
+
+        string sections = string.Join("\n", sectionIndex);
+        string rows = "";
+        string XZ = "";
+        
+        foreach (GameObject LED in allLEDs)
+        {
+            XZ += (Mathf.Floor(-LED.transform.position.x * 1000f) / 1000f).ToString() + ", " + (Mathf.Floor(LED.transform.position.z * 1000f) / 1000f).ToString() + "\n";
+        }
+
+        foreach (int[] section in rowIndex)
+        {
+            foreach (int x in section)
+            {
+                rows += x + "\n";
+            }
+        }
+        File.WriteAllText("positions.txt", XZ);
+        File.WriteAllText("rows.txt", rows);
+        File.WriteAllText("sections.txt", sections);
     }
 
 
@@ -106,71 +126,64 @@ public class ShowViewer : MonoBehaviour
     // However, for transitions that need to happen every frame (i.e. a crossfade), we have no choice
     void Update()
     {
-        float currentTime = animationSpeedFactor * (Time.time - timeOffset);
 
         // This code makes it so that the L key loads the first scene layout
         // There is 0 reason for this except that it made it easy to build a quick demo for the sponsor / our final checkpoint
         // It's been left behind in case it's helpful, but ofc adapt this to your needs
-        if (Input.GetKeyDown(KeyCode.L))
-        {
-            string path = Application.persistentDataPath + "/0.json";
-            if (File.Exists(path))
-            {
-                Debug.Log("Automatically loading LED data from " + path);
-                string jsonData = File.ReadAllText(path);
-                LoadDataFromFile(jsonData);
-            }
-            else
-            {
-                Debug.Log("No save file found at " + path);
-            }
-        }
+        // if (Input.GetKeyDown(KeyCode.L))
+        // {
+        //     string path = Application.persistentDataPath + "/0.json";
+        //     if (File.Exists(path))
+        //     {
+        //         Debug.Log("Automatically loading LED data from " + path);
+        //         string jsonData = File.ReadAllText(path);
+        //         LoadDataFromFile(jsonData);
+        //     }
+        //     else
+        //     {
+        //         Debug.Log("No save file found at " + path);
+        //     }
+        // }
 
-        // Animates the lightshow based on the current time
-        // This is probably not the best way to do this, but it was fast
-        if (isLightShowPlaying && Mathf.FloorToInt(currentTime) > lastLoadedStep)
+        timeDelta = Time.time - timeFrameStart;
+
+        // Animates the lightshow based on the frame times
+        if (isLightShowPlaying && timeDelta >= timeFrameDuration)
         {
-            lastLoadedStep = Mathf.FloorToInt(currentTime);
-            string resourcePath = $"first_demo_refactor/{lastLoadedStep}";
+            string resourcePath = $"{currentLoadedShow}/{currentFrame}";
+
             TextAsset jsonAsset = Resources.Load<TextAsset>(resourcePath);
             if (jsonAsset != null)
             {
                 Debug.Log($"Loaded LED data from Resources/{resourcePath}.json");
-                LoadDataFromFile(jsonAsset.text);
+                timeFrameDuration = LoadDataFromFile(jsonAsset.text) / 1000f; // Convert milliseconds to seconds
             }
             else
             {
                 Debug.LogWarning($"No JSON file at Resources/{resourcePath}.json");
             }
-        }
 
-        // Handles the pulse and static effects
-        foreach (LEDGroupData group in groupList)
-        {
-            if (group.isPulseActive)
-            {
-                float scaledTime = currentTime * pulseSpeed;
-                Color lerpedColor = Color.Lerp(group.color * 0.8f, group.color * 1.2f, BrightnessCurve.Evaluate(scaledTime)); // Pulses the color based on the brightness curve as a function of time
-
-                foreach (int index in group.LEDIndices)
-                {
-                    GameObject LED = allLEDs[index];
-                    SetColor(LED, lerpedColor);
-                }
-            }
-            if (group.isStaticActive && currentTime >= nextStepTime)
-            {
-                foreach (int index in group.LEDIndices)
-                {
-                    GameObject LED = allLEDs[index];
-                    SetColor(LED, new Color(Random.value, Random.value, Random.value));
-                }
-            }
+            currentFrame++;
+            timeFrameStart = Time.time;
         }
-        if (currentTime >= nextStepTime) { nextStepTime = Time.time - timeOffset; }
     }
 
 
+    // Handles the lightshow starting / stopping
+    public void BeginLightshow()
+    {
+        isLightShowPlaying = true;
+        currentFrame = 0;
+        timeFrameStart = Time.time;
+        timeFrameDuration = 0f; // Force immediate load of first frame
+
+        Debug.Log("Performance begun");
+    }
+
+    public void EndLightshow()
+    {
+        isLightShowPlaying = false;
+    }
 
     // This effect is run during the load process
     private void TwinkleEffect(GameObject LED)
@@ -195,21 +208,6 @@ public class ShowViewer : MonoBehaviour
                 break;
         }
         SetColor(LED, selectedColor);
-    }
-
-    // Handles the lightshow starting / stopping
-    public void BeginLightshow()
-    {
-        isLightShowPlaying = true;
-        timeOffset = Time.time;
-        nextStepTime = 0.45f;
-        lastLoadedStep = -1;
-        Debug.Log("Performance begun");
-    }
-
-    public void EndLightshow()
-    {
-        isLightShowPlaying = false;
     }
 
     // Sorts the sections by section number, assuming the section names are in the format "Section X" where X is the section number
@@ -270,10 +268,9 @@ public class ShowViewer : MonoBehaviour
         return result;
     }
 
-    // Save data to file and load data from file
-    // While loading the data, this is also when it's programmed to perform the "twinkle" effect
-    // You might want to move this elsewhere or at least make it into its own function
-    public void LoadDataFromFile(string jsonData)
+    // Loads LED data from a JSON string
+    // returns the duration of time that this frame should be active for
+    public float LoadDataFromFile(string jsonData)
     {
         LEDSaveData saveData = JsonUtility.FromJson<LEDSaveData>(jsonData);
         groupList.Clear();
@@ -300,6 +297,8 @@ public class ShowViewer : MonoBehaviour
                 }
             }
         }
+
+        return saveData.duration;
     }
 
     // Sets the color for the LED objects
