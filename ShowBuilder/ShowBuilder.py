@@ -230,7 +230,7 @@ class MainWindow(QMainWindow):
         tabs.addTab(self.create_image_tab(), "Image Loader")
 
         # Labels
-        readme_label = QLabel()
+        readme_label = QLabel("")
         self.current_frame_label = QLabel()
         self.current_frame_label.setFixedWidth(150)
         self.current_frame_label.setFixedHeight(30)
