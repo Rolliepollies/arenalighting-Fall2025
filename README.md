@@ -4,14 +4,15 @@ Unity Project that creates virtual simulation of the arena light show as a demo 
 ### Sponsor
 [Mike Moody](mailto:musicmattersbookings@gmail.com)
 
-### Spring 2025 Team Developers
-- Aidan Miller
-- Thomas Pohler
-- Zamarian Bryant
+### Fall 2025 Team Developers
+- Justin Diehl
+- Andrew Hayworth
+- Noah Kliesner
 
 ### Skills required
 - Unity
 - C#
+- Python
 
 ### How to get started.
 1. Read [How to setup a development environment](https://github.com/dss0029/arenalighting-spring2023/wiki/How-to-setup-a-development-environment).
