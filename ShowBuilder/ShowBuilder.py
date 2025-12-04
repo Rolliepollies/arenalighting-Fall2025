@@ -242,7 +242,7 @@ class MainWindow(QMainWindow):
 
         # Buttons
         save_frame_button = QPushButton("Save Frame")
-        save_frame_button.clicked.connect(self.save_frame)
+        save_frame_button.clicked.connect(lambda: self.save_frame(-1))
         save_frame_button.setFixedWidth(150)
         save_frame_button.setFixedHeight(20)
 
