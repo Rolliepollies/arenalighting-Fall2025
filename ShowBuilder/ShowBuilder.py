@@ -230,7 +230,7 @@ class MainWindow(QMainWindow):
         tabs.addTab(self.create_image_tab(), "Image Loader")
 
         # Labels
-        readme_label = QLabel()
+        self.readme_label = QLabel("For more instructions on how to use this sofware copy this link: \n\n https://github.com/Rolliepollies/arenalighting-Fall2025/wikie")
         self.current_frame_label = QLabel()
         self.current_frame_label.setFixedWidth(150)
         self.current_frame_label.setFixedHeight(30)
@@ -375,7 +375,12 @@ class MainWindow(QMainWindow):
         frame_tab_layout = QHBoxLayout()
         frame_tab_layout_left = QVBoxLayout()
         frame_tab_layout_right = QVBoxLayout()
+        readme_layout = QVBoxLayout()
 
+
+        readme_layout.addWidget(self.readme_label)
+        README_tab.setLayout(readme_layout)
+        
         frame_tab_layout_left.addWidget(self.current_frame_label)
         frame_tab_layout_left.addWidget(self.show_dropdown)
         frame_tab_layout_left.addWidget(self.json_scroll_area)
